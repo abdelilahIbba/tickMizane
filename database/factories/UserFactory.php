@@ -25,20 +25,51 @@ class UserFactory extends Factory
     {
         return [
             'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
+            'username' => fake()->unique()->userName(),
             'password' => static::$password ??= Hash::make('password'),
+            'role' => fake()->randomElement(['admin', 'caissier', 'serveur']),
+            'status' => 'active',
             'remember_token' => Str::random(10),
         ];
     }
 
     /**
-     * Indicate that the model's email address should be unverified.
+     * Create an admin user.
      */
-    public function unverified(): static
+    public function admin(): static
     {
         return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
+            'role' => 'admin',
+        ]);
+    }
+
+    /**
+     * Create a caissier user.
+     */
+    public function caissier(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'caissier',
+        ]);
+    }
+
+    /**
+     * Create a serveur user.
+     */
+    public function serveur(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'serveur',
+        ]);
+    }
+
+    /**
+     * Create a blocked user.
+     */
+    public function blocked(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'blocked',
         ]);
     }
 }
