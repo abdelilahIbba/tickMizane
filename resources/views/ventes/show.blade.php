@@ -10,15 +10,18 @@
             </a>
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-3xl font-bold text-white">Vente #{{ str_pad($vente->id ?? 48, 6, '0', STR_PAD_LEFT) }}</h1>
-                    <p class="text-gray-400 mt-1">{{ now()->format('d/m/Y à H:i') }}</p>
+                    <h1 class="text-3xl font-bold text-white">Vente #{{ str_pad($vente->id, 6, '0', STR_PAD_LEFT) }}</h1>
+                    <p class="text-gray-400 mt-1">{{ $vente->created_at->format('d/m/Y à H:i') }}</p>
                 </div>
-                <x-ui.button variant="primary" href="{{ route('payments.receipt', $vente ?? 48) }}">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                    </svg>
-                    Imprimer le reçu
-                </x-ui.button>
+                <div class="flex items-center gap-3">
+                    @if($vente->status === 'paid')
+                        <x-ui.badge variant="success">Payée</x-ui.badge>
+                    @elseif($vente->status === 'pending')
+                        <x-ui.badge variant="warning">En attente</x-ui.badge>
+                    @else
+                        <x-ui.badge variant="danger">Annulée</x-ui.badge>
+                    @endif
+                </div>
             </div>
         </div>
         
@@ -26,22 +29,22 @@
             {{-- Sale Info --}}
             <div class="lg:col-span-2 space-y-6">
                 {{-- Items --}}
-                <x-ui.card title="Articles" :padding="false">
+                <x-ui.card title="Articles ({{ $vente->details->count() }})" :padding="false">
                     <x-ui.table :headers="['Produit', 'Prix unitaire', 'Quantité', 'Total']">
-                        @foreach([
-                            ['name' => 'Eau minérale 1.5L', 'price' => 5.00, 'qty' => 3],
-                            ['name' => 'Coca-Cola 33cl', 'price' => 8.00, 'qty' => 2],
-                            ['name' => 'Chips Lays 150g', 'price' => 15.00, 'qty' => 1],
-                            ['name' => 'Pain de mie', 'price' => 12.00, 'qty' => 1],
-                            ['name' => 'Lait 1L', 'price' => 10.00, 'qty' => 2],
-                        ] as $item)
+                        @forelse($vente->details as $detail)
                             <tr class="hover:bg-gray-700/50 transition-colors">
-                                <td class="px-6 py-4 text-white">{{ $item['name'] }}</td>
-                                <td class="px-6 py-4 text-gray-300">{{ number_format($item['price'], 2) }} DH</td>
-                                <td class="px-6 py-4 text-gray-300">{{ $item['qty'] }}</td>
-                                <td class="px-6 py-4 text-amber-400 font-semibold">{{ number_format($item['price'] * $item['qty'], 2) }} DH</td>
+                                <td class="px-6 py-4 text-white">{{ $detail->produit->name ?? 'Produit supprimé' }}</td>
+                                <td class="px-6 py-4 text-gray-300">{{ number_format($detail->price, 2) }} DH</td>
+                                <td class="px-6 py-4 text-gray-300">{{ $detail->quantity }}</td>
+                                <td class="px-6 py-4 text-amber-400 font-semibold">{{ number_format($detail->total_line, 2) }} DH</td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td colspan="4" class="px-6 py-8 text-center text-gray-400">
+                                    Aucun article dans cette vente
+                                </td>
+                            </tr>
+                        @endforelse
                     </x-ui.table>
                 </x-ui.card>
             </div>
@@ -50,17 +53,9 @@
             <div class="space-y-6">
                 <x-ui.card title="Résumé">
                     <div class="space-y-4">
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">Sous-total</span>
-                            <span class="text-white">78.00 DH</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">TVA (20%)</span>
-                            <span class="text-white">15.60 DH</span>
-                        </div>
-                        <div class="flex justify-between pt-4 border-t border-gray-700">
-                            <span class="text-white font-semibold">Total TTC</span>
-                            <span class="text-2xl font-bold text-amber-400">93.60 DH</span>
+                        <div class="flex justify-between pt-2">
+                            <span class="text-white font-semibold">Total</span>
+                            <span class="text-2xl font-bold text-amber-400">{{ number_format($vente->total, 2) }} DH</span>
                         </div>
                     </div>
                 </x-ui.card>
@@ -69,16 +64,22 @@
                     <div class="space-y-4">
                         <div class="flex justify-between items-center">
                             <span class="text-gray-400">Mode</span>
-                            <x-ui.badge variant="success">Espèces</x-ui.badge>
+                            @if($vente->payment_method === 'cash')
+                                <x-ui.badge variant="success">Espèces</x-ui.badge>
+                            @elseif($vente->payment_method === 'carte')
+                                <x-ui.badge variant="info">Carte</x-ui.badge>
+                            @else
+                                <x-ui.badge variant="warning">Mixte</x-ui.badge>
+                            @endif
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">Montant reçu</span>
-                            <span class="text-white">100.00 DH</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">Monnaie rendue</span>
-                            <span class="text-emerald-400">6.40 DH</span>
-                        </div>
+                        @if($vente->paiements->count() > 0)
+                            @foreach($vente->paiements as $paiement)
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Paiement {{ $loop->iteration }}</span>
+                                    <span class="text-white">{{ number_format($paiement->amount, 2) }} DH</span>
+                                </div>
+                            @endforeach
+                        @endif
                     </div>
                 </x-ui.card>
                 
@@ -86,15 +87,21 @@
                     <div class="space-y-3">
                         <div class="flex justify-between">
                             <span class="text-gray-400">Caissier</span>
-                            <span class="text-white">Ahmed</span>
+                            <span class="text-white">{{ $vente->user->name ?? '-' }}</span>
                         </div>
+                        @if($vente->table)
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Table</span>
+                                <span class="text-white">{{ $vente->table->name }}</span>
+                            </div>
+                        @endif
                         <div class="flex justify-between">
                             <span class="text-gray-400">Date</span>
-                            <span class="text-white">{{ now()->format('d/m/Y') }}</span>
+                            <span class="text-white">{{ $vente->created_at->format('d/m/Y') }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-400">Heure</span>
-                            <span class="text-white">{{ now()->format('H:i:s') }}</span>
+                            <span class="text-white">{{ $vente->created_at->format('H:i:s') }}</span>
                         </div>
                     </div>
                 </x-ui.card>

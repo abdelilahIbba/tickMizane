@@ -29,6 +29,11 @@ class Historique extends Model
         'table_name',
         'record_id',
         'description',
+        'ip_address',
+        'user_agent',
+        'old_values',
+        'new_values',
+        'device_type',
     ];
 
     /**
@@ -40,6 +45,8 @@ class Historique extends Model
     {
         return [
             'record_id' => 'integer',
+            'old_values' => 'array',
+            'new_values' => 'array',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

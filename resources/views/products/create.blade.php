@@ -33,7 +33,7 @@
                 <x-form.select 
                     name="category_id" 
                     label="Catégorie"
-                    :options="['1' => 'Boissons', '2' => 'Snacks', '3' => 'Épicerie', '4' => 'Hygiène', '5' => 'Électronique']"
+                    :options="$categories->pluck('name', 'id')->toArray()"
                     required
                 />
                 
@@ -44,7 +44,6 @@
                         label="Prix d'achat" 
                         placeholder="0.00"
                         suffix="DH"
-                        required
                     />
                     
                     <x-form.input 
@@ -71,20 +70,19 @@
                         name="alert_stock" 
                         label="Seuil d'alerte" 
                         placeholder="10"
-                        required
                     />
                 </div>
                 
                 <x-form.select 
                     name="unit" 
                     label="Unité"
-                    :options="['piece' => 'Pièce', 'kg' => 'Kilogramme', 'litre' => 'Litre', 'paquet' => 'Paquet', 'boite' => 'Boîte', 'bouteille' => 'Bouteille', 'canette' => 'Canette']"
+                    :options="['pcs' => 'Pièce', 'kg' => 'Kilogramme', 'l' => 'Litre']"
                 />
                 
                 <x-form.select 
                     name="status" 
                     label="Statut"
-                    :options="['active' => 'Actif', 'archived' => 'Archivé']"
+                    :options="['active' => 'Actif', 'inactive' => 'Inactif']"
                     selected="active"
                 />
                 

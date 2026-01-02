@@ -28,15 +28,15 @@
                     name="name" 
                     label="Nom du produit" 
                     placeholder="Ex: Eau minérale 1.5L"
-                    value="{{ $product->name ?? 'Eau minérale 1.5L' }}"
+                    value="{{ $product->name ?? '' }}"
                     required
                 />
                 
                 <x-form.select 
                     name="category_id" 
                     label="Catégorie"
-                    :options="['1' => 'Boissons', '2' => 'Snacks', '3' => 'Épicerie', '4' => 'Hygiène', '5' => 'Électronique']"
-                    selected="{{ $product->category_id ?? '1' }}"
+                    :options="$categories->pluck('name', 'id')->toArray()"
+                    selected="{{ $product->category_id ?? '' }}"
                     required
                 />
                 
@@ -46,9 +46,8 @@
                         name="price_achat" 
                         label="Prix d'achat" 
                         placeholder="0.00"
-                        value="{{ $product->price_achat ?? '3.50' }}"
+                        value="{{ $product->price_achat ?? '' }}"
                         suffix="DH"
-                        required
                     />
                     
                     <x-form.input 
@@ -56,7 +55,7 @@
                         name="price_vente" 
                         label="Prix de vente" 
                         placeholder="0.00"
-                        value="{{ $product->price_vente ?? '5.00' }}"
+                        value="{{ $product->price_vente ?? '' }}"
                         suffix="DH"
                         required
                     />
@@ -68,8 +67,8 @@
                         name="stock_quantity" 
                         label="Stock actuel" 
                         placeholder="0"
-                        value="{{ $product->stock_quantity ?? '25' }}"
-                        required
+                        value="{{ $product->stock_quantity ?? '0' }}"
+                        disabled
                     />
                     
                     <x-form.input 
@@ -78,21 +77,20 @@
                         label="Seuil d'alerte" 
                         placeholder="10"
                         value="{{ $product->alert_stock ?? '10' }}"
-                        required
                     />
                 </div>
                 
                 <x-form.select 
                     name="unit" 
                     label="Unité"
-                    :options="['piece' => 'Pièce', 'kg' => 'Kilogramme', 'litre' => 'Litre', 'paquet' => 'Paquet', 'boite' => 'Boîte', 'bouteille' => 'Bouteille', 'canette' => 'Canette']"
-                    selected="{{ $product->unit ?? 'bouteille' }}"
+                    :options="['pcs' => 'Pièce', 'kg' => 'Kilogramme', 'l' => 'Litre']"
+                    selected="{{ $product->unit ?? 'pcs' }}"
                 />
                 
                 <x-form.select 
                     name="status" 
                     label="Statut"
-                    :options="['active' => 'Actif', 'archived' => 'Archivé']"
+                    :options="['active' => 'Actif', 'inactive' => 'Inactif']"
                     selected="{{ $product->status ?? 'active' }}"
                 />
                 

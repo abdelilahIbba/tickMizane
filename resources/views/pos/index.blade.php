@@ -181,15 +181,15 @@
                             Espèces
                         </button>
                         <button 
-                            @click="paymentMethod = 'card'"
-                            :class="paymentMethod === 'card' ? 'bg-amber-500 text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
+                            @click="paymentMethod = 'carte'"
+                            :class="paymentMethod === 'carte' ? 'bg-amber-500 text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
                             class="py-3 px-4 font-semibold rounded-xl transition-colors"
                         >
                             Carte
                         </button>
                         <button 
-                            @click="paymentMethod = 'mixed'"
-                            :class="paymentMethod === 'mixed' ? 'bg-amber-500 text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
+                            @click="paymentMethod = 'mixte'"
+                            :class="paymentMethod === 'mixte' ? 'bg-amber-500 text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
                             class="py-3 px-4 font-semibold rounded-xl transition-colors"
                         >
                             Mixte
@@ -200,13 +200,21 @@
                 {{-- Checkout Button --}}
                 <button 
                     @click="checkout()"
-                    :disabled="cart.length === 0"
+                    :disabled="cart.length === 0 || loading"
                     class="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold text-lg rounded-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    Valider la vente
+                    <template x-if="!loading">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </template>
+                    <template x-if="loading">
+                        <svg class="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </template>
+                    <span x-text="loading ? 'Traitement...' : 'Valider la vente'"></span>
                 </button>
                 
                 {{-- Clear Cart --}}
@@ -220,6 +228,22 @@
         </div>
     </div>
     
+    @php
+        $categoriesJson = $categories->map(function($c) {
+            return ['id' => $c->id, 'name' => $c->name];
+        })->values();
+        
+        $productsJson = $products->map(function($p) {
+            return [
+                'id' => $p->id,
+                'name' => $p->name,
+                'price' => (float) $p->price_vente,
+                'stock' => $p->stock_quantity,
+                'category_id' => $p->category_id
+            ];
+        })->values();
+    @endphp
+    
     @push('scripts')
     <script>
         function posSystem() {
@@ -228,34 +252,17 @@
                 selectedCategory: null,
                 paymentMethod: 'cash',
                 cart: [],
+                loading: false,
                 
-                categories: [
-                    { id: 1, name: 'Boissons' },
-                    { id: 2, name: 'Snacks' },
-                    { id: 3, name: 'Épicerie' },
-                    { id: 4, name: 'Hygiène' },
-                ],
+                categories: {!! json_encode($categoriesJson) !!},
                 
-                products: [
-                    { id: 1, name: 'Eau minérale 1.5L', price: 5.00, stock: 50, category_id: 1 },
-                    { id: 2, name: 'Coca-Cola 33cl', price: 8.00, stock: 45, category_id: 1 },
-                    { id: 3, name: 'Jus d\'orange 1L', price: 15.00, stock: 30, category_id: 1 },
-                    { id: 4, name: 'Café Express', price: 12.00, stock: 100, category_id: 1 },
-                    { id: 5, name: 'Chips Lays 150g', price: 15.00, stock: 28, category_id: 2 },
-                    { id: 6, name: 'Biscuits Oreo', price: 12.00, stock: 35, category_id: 2 },
-                    { id: 7, name: 'Chocolat Milka', price: 25.00, stock: 20, category_id: 2 },
-                    { id: 8, name: 'Cacahuètes 200g', price: 18.00, stock: 40, category_id: 2 },
-                    { id: 9, name: 'Pain de mie', price: 12.00, stock: 15, category_id: 3 },
-                    { id: 10, name: 'Lait 1L', price: 10.00, stock: 60, category_id: 3 },
-                    { id: 11, name: 'Œufs (6pcs)', price: 18.00, stock: 25, category_id: 3 },
-                    { id: 12, name: 'Beurre 250g', price: 35.00, stock: 18, category_id: 3 },
-                ],
+                products: {!! json_encode($productsJson) !!},
                 
                 get filteredProducts() {
                     return this.products.filter(p => {
                         const matchSearch = this.search === '' || p.name.toLowerCase().includes(this.search.toLowerCase());
                         const matchCategory = this.selectedCategory === null || p.category_id === this.selectedCategory;
-                        return matchSearch && matchCategory;
+                        return matchSearch && matchCategory && p.stock > 0;
                     });
                 },
                 
@@ -264,23 +271,34 @@
                 },
                 
                 get tax() {
-                    return this.subtotal * 0.2;
+                    return 0; // Pas de TVA séparée, prix TTC
                 },
                 
                 get total() {
-                    return this.subtotal + this.tax;
+                    return this.subtotal;
                 },
                 
                 addToCart(product) {
+                    if (product.stock <= 0) {
+                        this.$dispatch('notify', { type: 'error', message: 'Stock insuffisant pour ' + product.name });
+                        return;
+                    }
+                    
                     const existingIndex = this.cart.findIndex(item => item.id === product.id);
                     if (existingIndex > -1) {
+                        // Check stock
+                        if (this.cart[existingIndex].quantity >= product.stock) {
+                            this.$dispatch('notify', { type: 'error', message: 'Stock insuffisant pour ' + product.name });
+                            return;
+                        }
                         this.cart[existingIndex].quantity++;
                     } else {
                         this.cart.push({
                             id: product.id,
                             name: product.name,
                             price: product.price,
-                            quantity: 1
+                            quantity: 1,
+                            maxStock: product.stock
                         });
                     }
                     this.$dispatch('notify', { type: 'success', message: product.name + ' ajouté au panier' });
@@ -294,6 +312,8 @@
                     const newQty = this.cart[index].quantity + delta;
                     if (newQty <= 0) {
                         this.removeFromCart(index);
+                    } else if (newQty > this.cart[index].maxStock) {
+                        this.$dispatch('notify', { type: 'error', message: 'Stock insuffisant' });
                     } else {
                         this.cart[index].quantity = newQty;
                     }
@@ -303,12 +323,54 @@
                     this.cart = [];
                 },
                 
-                checkout() {
-                    if (this.cart.length === 0) return;
+                async checkout() {
+                    if (this.cart.length === 0 || this.loading) return;
                     
-                    // Here you would typically submit to the server
-                    this.$dispatch('notify', { type: 'success', message: 'Vente validée! Total: ' + this.total.toFixed(2) + ' DH' });
-                    this.cart = [];
+                    this.loading = true;
+                    
+                    try {
+                        const response = await fetch('{{ route("pos.checkout") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                items: this.cart.map(item => ({
+                                    id: item.id,
+                                    quantity: item.quantity
+                                })),
+                                payment_method: this.paymentMethod,
+                                table_id: {{ $table->id ?? 'null' }}
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            this.$dispatch('notify', { type: 'success', message: 'Vente validée! Total: ' + this.total.toFixed(2) + ' DH' });
+                            this.cart = [];
+                            
+                            // Update local stock
+                            this.cart.forEach(item => {
+                                const product = this.products.find(p => p.id === item.id);
+                                if (product) {
+                                    product.stock -= item.quantity;
+                                }
+                            });
+                            
+                            // Reload page to get fresh stock data
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            this.$dispatch('notify', { type: 'error', message: data.message || 'Erreur lors de la vente' });
+                        }
+                    } catch (error) {
+                        console.error('Checkout error:', error);
+                        this.$dispatch('notify', { type: 'error', message: 'Erreur de connexion' });
+                    } finally {
+                        this.loading = false;
+                    }
                 }
             }
         }

@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use App\Models\Historique;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Request;
 
 trait LogsHistorique
 {
@@ -39,6 +40,19 @@ trait LogsHistorique
             $description = $this->generateDescription($action, $modelName);
         }
 
+        // Get old and new values for updates
+        $oldValues = null;
+        $newValues = null;
+        
+        if ($action === 'update') {
+            $oldValues = $this->getOriginal();
+            $newValues = $this->getChanges();
+            
+            // Remove timestamps and hidden fields
+            unset($oldValues['updated_at'], $oldValues['created_at'], $oldValues['password'], $oldValues['remember_token']);
+            unset($newValues['updated_at'], $newValues['created_at'], $newValues['password'], $newValues['remember_token']);
+        }
+
         Historique::create([
             'user_id' => $user?->id,
             'role' => $user?->role ?? 'system',
@@ -46,6 +60,11 @@ trait LogsHistorique
             'table_name' => $tableName,
             'record_id' => $this->id,
             'description' => $description,
+            'ip_address' => Request::ip(),
+            'user_agent' => Request::userAgent(),
+            'old_values' => $oldValues ? json_encode($oldValues) : null,
+            'new_values' => $newValues ? json_encode($newValues) : null,
+            'device_type' => $this->detectDeviceType(Request::userAgent()),
         ]);
     }
 
@@ -80,4 +99,27 @@ trait LogsHistorique
     {
         $this->logHistorique($action, $description);
     }
+
+    /**
+     * Detect device type from user agent.
+     */
+    protected function detectDeviceType(?string $userAgent): string
+    {
+        if (empty($userAgent)) {
+            return 'unknown';
+        }
+
+        $userAgent = strtolower($userAgent);
+
+        if (preg_match('/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i', $userAgent)) {
+            return 'tablet';
+        }
+
+        if (preg_match('/(mobile|iphone|ipod|android|blackberry|opera mini|opera mobi|skyfire|maemo|windows phone|palm|iemobile|symbian|symbianos|fennec)/i', $userAgent)) {
+            return 'mobile';
+        }
+
+        return 'desktop';
+    }
 }
+

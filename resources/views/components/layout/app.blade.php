@@ -61,13 +61,13 @@
     
     @stack('styles')
 </head>
-<body class="h-full bg-gray-950 text-gray-100 antialiased">
-    <div class="min-h-full flex flex-col">
+<body class="h-full bg-gray-950 text-gray-100 antialiased overflow-hidden">
+    <div class="h-full flex flex-col">
         {{-- Include Navbar --}}
         <x-layout.navbar />
         
         {{-- Main Content --}}
-        <main class="flex-1">
+        <main class="flex-1 overflow-y-auto">
             {{ $slot }}
         </main>
         
