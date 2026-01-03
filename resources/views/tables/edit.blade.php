@@ -1,4 +1,4 @@
-<x-layout.app title="Modifier la table">
+<x-layout.app title="Modifier la table {{ $table->name }}">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {{-- Page Header --}}
         <div class="mb-8">
@@ -8,9 +8,19 @@
                 </svg>
                 Retour aux tables
             </a>
-            <h1 class="text-3xl font-bold text-white">Modifier la table</h1>
+            <h1 class="text-3xl font-bold text-white">Modifier la table {{ $table->name }}</h1>
             <p class="text-gray-400 mt-1">Modifier les paramètres de la table</p>
         </div>
+        
+        {{-- Current Status --}}
+        @if($table->status === 'occupied')
+            <x-ui.alert type="warning" class="mb-6">
+                <div class="flex items-center justify-between">
+                    <span>Cette table est actuellement occupée depuis {{ $table->getOccupiedMinutes() }} minutes.</span>
+                    <a href="{{ route('tables.show', $table) }}" class="text-amber-400 hover:text-amber-300 underline">Voir détails</a>
+                </div>
+            </x-ui.alert>
+        @endif
         
         {{-- Form Card --}}
         <x-ui.card>
@@ -20,53 +30,74 @@
                 </x-ui.alert>
             @endif
             
-            <form action="{{ route('tables.update', $table ?? 1) }}" method="POST" class="space-y-6">
+            <form action="{{ route('tables.update', $table) }}" method="POST" class="space-y-6">
                 @csrf
                 @method('PUT')
                 
-                <x-form.input 
-                    name="number" 
-                    label="Numéro de table" 
-                    placeholder="Ex: 13"
-                    value="{{ $table->number ?? '01' }}"
-                    required
-                />
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Numéro/Nom de table *</label>
+                    <input type="text" 
+                           name="name" 
+                           value="{{ old('name', $table->name) }}"
+                           placeholder="Ex: 01, A1, Terrasse 1..."
+                           class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                           required>
+                    @error('name')
+                        <p class="mt-1 text-sm text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
                 
-                <x-form.select 
-                    name="seats" 
-                    label="Nombre de places"
-                    :options="[
-                        '2' => '2 places',
-                        '4' => '4 places',
-                        '6' => '6 places',
-                        '8' => '8 places',
-                        '10' => '10 places',
-                        '12' => '12 places',
-                    ]"
-                    value="{{ $table->seats ?? '4' }}"
-                    required
-                />
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Nombre de places *</label>
+                    <select name="places" 
+                            class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            required>
+                        @foreach($placesOptions as $value => $label)
+                            <option value="{{ $value }}" {{ old('places', $table->places ?? $table->seats ?? 4) == $value ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('places')
+                        <p class="mt-1 text-sm text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
                 
-                <x-form.select 
-                    name="zone" 
-                    label="Zone"
-                    :options="[
-                        'interieur' => 'Intérieur',
-                        'terrasse' => 'Terrasse',
-                        'salon' => 'Salon privé',
-                    ]"
-                    value="{{ $table->zone ?? 'interieur' }}"
-                />
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Zone</label>
+                    <select name="zone" 
+                            class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent">
+                        <option value="">-- Sélectionner une zone --</option>
+                        @foreach($zones as $key => $label)
+                            <option value="{{ $key }}" {{ old('zone', $table->zone) === $key ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('zone')
+                        <p class="mt-1 text-sm text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
                 
-                <x-form.textarea 
-                    name="notes" 
-                    label="Notes" 
-                    placeholder="Notes supplémentaires..."
-                    value="{{ $table->notes ?? '' }}"
-                    rows="2"
-                />
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Notes</label>
+                    <textarea name="notes" 
+                              rows="2"
+                              placeholder="Notes supplémentaires (ex: près de la fenêtre, accessible PMR...)"
+                              class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:ring-2 focus:ring-amber-500 focus:border-transparent">{{ old('notes', $table->notes) }}</textarea>
+                    @error('notes')
+                        <p class="mt-1 text-sm text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
                 
-                <x-form.checkbox name="is_active" label="Table active" checked />
+                <div class="flex items-center gap-3">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="hidden" name="is_active" value="0">
+                        <input type="checkbox" 
+                               name="is_active" 
+                               value="1" 
+                               class="sr-only peer"
+                               {{ old('is_active', $table->is_active ?? true) ? 'checked' : '' }}>
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-500/25 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                        <span class="ms-3 text-sm font-medium text-gray-300">Table active</span>
+                    </label>
+                </div>
                 
                 <div class="flex items-center justify-between gap-3 pt-4 border-t border-gray-700">
                     <x-ui.button variant="danger" type="button" onclick="confirm('Supprimer cette table?') && document.getElementById('delete-form').submit()">
@@ -83,7 +114,7 @@
                 </div>
             </form>
             
-            <form id="delete-form" action="{{ route('tables.destroy', $table ?? 1) }}" method="POST" class="hidden">
+            <form id="delete-form" action="{{ route('tables.destroy', $table) }}" method="POST" class="hidden">
                 @csrf
                 @method('DELETE')
             </form>

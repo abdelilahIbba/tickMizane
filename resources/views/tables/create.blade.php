@@ -23,43 +23,57 @@
             <form action="{{ route('tables.store') }}" method="POST" class="space-y-6">
                 @csrf
                 
-                <x-form.input 
-                    name="number" 
-                    label="Numéro de table" 
-                    placeholder="Ex: 13"
-                    required
-                />
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Numéro/Nom de table *</label>
+                    <input type="text" 
+                           name="name" 
+                           value="{{ old('name') }}"
+                           placeholder="Ex: 01, A1, Terrasse 1..."
+                           class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                           required>
+                    @error('name')
+                        <p class="mt-1 text-sm text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
                 
-                <x-form.select 
-                    name="seats" 
-                    label="Nombre de places"
-                    :options="[
-                        '2' => '2 places',
-                        '4' => '4 places',
-                        '6' => '6 places',
-                        '8' => '8 places',
-                        '10' => '10 places',
-                        '12' => '12 places',
-                    ]"
-                    required
-                />
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Nombre de places *</label>
+                    <select name="places" 
+                            class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                            required>
+                        @foreach($placesOptions as $value => $label)
+                            <option value="{{ $value }}" {{ old('places', 4) == $value ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('places')
+                        <p class="mt-1 text-sm text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
                 
-                <x-form.select 
-                    name="zone" 
-                    label="Zone"
-                    :options="[
-                        'interieur' => 'Intérieur',
-                        'terrasse' => 'Terrasse',
-                        'salon' => 'Salon privé',
-                    ]"
-                />
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Zone</label>
+                    <select name="zone" 
+                            class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent">
+                        <option value="">-- Sélectionner une zone --</option>
+                        @foreach($zones as $key => $label)
+                            <option value="{{ $key }}" {{ old('zone') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('zone')
+                        <p class="mt-1 text-sm text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
                 
-                <x-form.textarea 
-                    name="notes" 
-                    label="Notes" 
-                    placeholder="Notes supplémentaires (ex: près de la fenêtre, accessible PMR...)"
-                    rows="2"
-                />
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Notes</label>
+                    <textarea name="notes" 
+                              rows="2"
+                              placeholder="Notes supplémentaires (ex: près de la fenêtre, accessible PMR...)"
+                              class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:ring-2 focus:ring-amber-500 focus:border-transparent">{{ old('notes') }}</textarea>
+                    @error('notes')
+                        <p class="mt-1 text-sm text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
                 
                 <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-700">
                     <x-ui.button variant="secondary" href="{{ route('tables.index') }}">

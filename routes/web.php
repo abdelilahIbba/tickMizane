@@ -119,10 +119,20 @@ Route::middleware(['auth'])->group(function () {
     | Tables management
     */
     Route::middleware(['role:serveur'])->group(function () {
-        // Tables
+        // Tables CRUD
         Route::resource('tables', TableController::class);
+        
+        // Table Actions
         Route::post('/tables/{table}/status', [TableController::class, 'updateStatus'])->name('tables.status');
+        Route::post('/tables/{table}/occupy', [TableController::class, 'occupy'])->name('tables.occupy');
+        Route::post('/tables/{table}/release', [TableController::class, 'release'])->name('tables.release');
         Route::post('/tables/{table}/transfer', [TableController::class, 'transfer'])->name('tables.transfer');
+        Route::post('/tables/{table}/assign-serveur', [TableController::class, 'assignServeur'])->name('tables.assign-serveur');
+        
+        // Table API (for AJAX)
+        Route::get('/tables/{table}/bill', [TableController::class, 'getCurrentBill'])->name('tables.bill');
+        Route::get('/tables-summary', [TableController::class, 'summary'])->name('tables.summary');
+        Route::get('/tables-analytics', [TableController::class, 'analytics'])->name('tables.analytics');
     });
     
     /*

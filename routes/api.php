@@ -51,10 +51,22 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
     */
     Route::middleware(['role:admin'])->group(function () {
         // Categories
-        Route::apiResource('categories', CategoryController::class);
+        Route::apiResource('categories', CategoryController::class)->names([
+            'index' => 'api.categories.index',
+            'store' => 'api.categories.store',
+            'show' => 'api.categories.show',
+            'update' => 'api.categories.update',
+            'destroy' => 'api.categories.destroy',
+        ]);
 
         // Products (full CRUD)
-        Route::apiResource('products', ProductController::class);
+        Route::apiResource('products', ProductController::class)->names([
+            'index' => 'api.products.index',
+            'store' => 'api.products.store',
+            'show' => 'api.products.show',
+            'update' => 'api.products.update',
+            'destroy' => 'api.products.destroy',
+        ]);
         Route::get('/products/barcode/{barcode}', [ProductController::class, 'barcode']);
         Route::get('/products/low-stock', [ProductController::class, 'lowStock']);
 
@@ -70,7 +82,13 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/stock/valuation', [StockController::class, 'valuation']);
 
         // Tables management (admin can manage all tables)
-        Route::apiResource('tables', TableController::class);
+        Route::apiResource('tables', TableController::class)->names([
+            'index' => 'api.tables.index',
+            'store' => 'api.tables.store',
+            'show' => 'api.tables.show',
+            'update' => 'api.tables.update',
+            'destroy' => 'api.tables.destroy',
+        ]);
         Route::get('/tables/zones', [TableController::class, 'zones']);
         Route::get('/tables/zone/{zone}', [TableController::class, 'byZone']);
         Route::get('/tables/summary', [TableController::class, 'summary']);
