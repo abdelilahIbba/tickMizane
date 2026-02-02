@@ -39,6 +39,14 @@ class DatabaseSeeder extends Seeder
             'status' => 'active',
         ]);
 
+        User::create([
+            'name' => 'Serveur 2',
+            'username' => 'serveur2',
+            'password' => Hash::make('serveur123'),
+            'role' => 'serveur',
+            'status' => 'active',
+        ]);
+
         // Create categories
         $boissons = Category::create(['name' => 'Boissons', 'description' => 'Boissons fraîches et chaudes', 'status' => 'active']);
         $snacks = Category::create(['name' => 'Snacks', 'description' => 'Chips, biscuits, confiseries', 'status' => 'active']);
@@ -59,7 +67,9 @@ class DatabaseSeeder extends Seeder
         // Create tables
         for ($i = 1; $i <= 12; $i++) {
             Table::create([
-                'name' => str_pad($i, 2, '0', STR_PAD_LEFT),
+                'name' => 'Table ' . str_pad($i, 2, '0', STR_PAD_LEFT),
+                'places' => ($i <= 4) ? 2 : (($i <= 8) ? 4 : 6),
+                'zone' => ($i <= 6) ? 'Intérieur' : 'Terrasse',
                 'status' => 'free',
             ]);
         }

@@ -28,6 +28,7 @@ class CommandeDetail extends Model
         'produit_id',
         'quantity',
         'price',
+        'notes',
     ];
 
     /**

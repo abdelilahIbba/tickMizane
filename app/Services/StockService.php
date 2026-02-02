@@ -79,6 +79,18 @@ class StockService
     }
 
     /**
+     * Reduce stock from a product (alias for removeStock for waiter orders).
+     */
+    public function reduceStock(
+        Produit $produit,
+        int $quantity,
+        string $reason = 'vente',
+        ?int $referenceId = null
+    ): StockMovement {
+        return $this->removeStock($produit, $quantity, $reason, $referenceId);
+    }
+
+    /**
      * Check if product is low on stock and trigger alerts.
      */
     public function checkLowStockAlert(Produit $produit): bool

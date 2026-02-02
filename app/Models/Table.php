@@ -167,6 +167,14 @@ class Table extends Model
     }
 
     /**
+     * Check if table is available (alias for isFree for French compatibility).
+     */
+    public function isAvailable(): bool
+    {
+        return $this->isFree();
+    }
+
+    /**
      * Check if table is occupied.
      */
     public function isOccupied(): bool
@@ -322,5 +330,21 @@ class Table extends Model
             10 => '10 places',
             12 => '12 places',
         ];
+    }
+
+    /**
+     * Get table number (accessor for compatibility).
+     */
+    public function getNumeroAttribute(): int
+    {
+        return $this->id;
+    }
+
+    /**
+     * Get capacity (accessor for compatibility).
+     */
+    public function getCapacityAttribute(): int
+    {
+        return $this->places ?? 4;
     }
 }

@@ -18,7 +18,6 @@ return new class extends Migration
             $table->decimal('total', 10, 2)->default(0);
             $table->enum('status', ['pending', 'received'])->default('pending');
             $table->timestamps();
-            
             $table->index('fournisseur_id');
             $table->index('user_id');
             $table->index('status');

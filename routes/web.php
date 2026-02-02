@@ -15,6 +15,8 @@ use App\Http\Controllers\TableController;
 use App\Http\Controllers\HistoriqueController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\WaiterController;
+use App\Http\Controllers\KitchenController;
 
 /*
 |--------------------------------------------------------------------------
@@ -116,9 +118,20 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     | Serveur Routes (+ Admin)
     |--------------------------------------------------------------------------
-    | Tables management
+    | Tables management, Waiter Tablet Interface
     */
     Route::middleware(['role:serveur'])->group(function () {
+        // Waiter Tablet Interface
+        Route::get('/waiter', [WaiterController::class, 'index'])->name('waiter.index');
+        Route::get('/waiter/table/{table}/order', [WaiterController::class, 'showTableOrder'])->name('waiter.table.order');
+        Route::post('/waiter/table/{table}/order', [WaiterController::class, 'storeOrder'])->name('waiter.order.store');
+        Route::get('/waiter/orders', [WaiterController::class, 'myOrders'])->name('waiter.orders');
+        Route::get('/waiter/order/{commande}', [WaiterController::class, 'showOrder'])->name('waiter.order.show');
+        
+        // AJAX endpoints
+        Route::get('/waiter/category/{category}/products', [WaiterController::class, 'getProductsByCategory'])->name('waiter.category.products');
+        Route::get('/waiter/table/{table}/check', [WaiterController::class, 'checkTable'])->name('waiter.table.check');
+        
         // Tables CRUD
         Route::resource('tables', TableController::class);
         
@@ -134,6 +147,25 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/tables/{table}/bill', [TableController::class, 'getCurrentBill'])->name('tables.bill');
         Route::get('/tables-summary', [TableController::class, 'summary'])->name('tables.summary');
         Route::get('/tables-analytics', [TableController::class, 'analytics'])->name('tables.analytics');
+    });
+    
+    /*
+    |--------------------------------------------------------------------------
+    | Kitchen Routes (Admin + Kitchen Staff)
+    |--------------------------------------------------------------------------
+    | Kitchen dashboard for viewing and managing orders
+    */
+    Route::middleware(['role:admin'])->group(function () {
+        // Kitchen Dashboard
+        Route::get('/kitchen', [KitchenController::class, 'index'])->name('kitchen.index');
+        Route::get('/kitchen/order/{commande}', [KitchenController::class, 'show'])->name('kitchen.order.show');
+        Route::post('/kitchen/order/{commande}/status', [KitchenController::class, 'updateStatus'])->name('kitchen.order.status');
+        Route::post('/kitchen/order/{commande}/served', [KitchenController::class, 'markServed'])->name('kitchen.order.served');
+        Route::get('/kitchen/order/{commande}/ticket', [KitchenController::class, 'printTicket'])->name('kitchen.ticket');
+        
+        // AJAX endpoints
+        Route::get('/kitchen/orders/active', [KitchenController::class, 'getActiveOrders'])->name('kitchen.orders.active');
+        Route::get('/kitchen/stats', [KitchenController::class, 'stats'])->name('kitchen.stats');
     });
     
     /*

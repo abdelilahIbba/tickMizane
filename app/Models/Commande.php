@@ -27,8 +27,11 @@ class Commande extends Model
     protected $fillable = [
         'fournisseur_id',
         'user_id',
+        'table_id',
         'total',
         'status',
+        'type',
+        'waiter_notes',
     ];
 
     /**
@@ -75,6 +78,14 @@ class Commande extends Model
         return $this->hasMany(CommandeDetail::class);
     }
 
+    /**
+     * Get the table for this commande (for kitchen orders).
+     */
+    public function table(): BelongsTo
+    {
+        return $this->belongsTo(Table::class);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Scopes
@@ -95,6 +106,38 @@ class Commande extends Model
     public function scopeReceived($query)
     {
         return $query->where('status', 'received');
+    }
+
+    /**
+     * Scope to only kitchen orders.
+     */
+    public function scopeKitchen($query)
+    {
+        return $query->where('type', 'kitchen');
+    }
+
+    /**
+     * Scope to only supplier orders.
+     */
+    public function scopeSupplier($query)
+    {
+        return $query->where('type', 'supplier');
+    }
+
+    /**
+     * Scope for orders in preparation.
+     */
+    public function scopeEnPreparation($query)
+    {
+        return $query->where('status', 'en_preparation');
+    }
+
+    /**
+     * Scope for served orders.
+     */
+    public function scopeServi($query)
+    {
+        return $query->where('status', 'servi');
     }
 
     /*
@@ -125,6 +168,38 @@ class Commande extends Model
     public function markReceived(): void
     {
         $this->update(['status' => 'received']);
+    }
+
+    /**
+     * Mark order as in preparation (kitchen).
+     */
+    public function markEnPreparation(): void
+    {
+        $this->update(['status' => 'en_preparation']);
+    }
+
+    /**
+     * Mark order as served.
+     */
+    public function markServi(): void
+    {
+        $this->update(['status' => 'servi']);
+    }
+
+    /**
+     * Check if this is a kitchen order.
+     */
+    public function isKitchenOrder(): bool
+    {
+        return $this->type === 'kitchen';
+    }
+
+    /**
+     * Check if this is a supplier order.
+     */
+    public function isSupplierOrder(): bool
+    {
+        return $this->type === 'supplier';
     }
 
     /**

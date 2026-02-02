@@ -6,6 +6,8 @@ use App\Models\Commande;
 use App\Models\CommandeDetail;
 use App\Models\Fournisseur;
 use App\Models\Produit;
+use App\Models\Table;
+use App\Events\NewKitchenOrder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +33,7 @@ class OrderService
                 'user_id' => Auth::id(),
                 'total' => 0,
                 'status' => 'pending',
+                'type' => 'supplier',
             ]);
 
             $total = 0;
@@ -215,5 +218,134 @@ class OrderService
                     'suggested_quantity' => max(($produit->alert_stock * 2) - $produit->stock_quantity, $produit->alert_stock),
                 ];
             });
+    }
+
+    /**
+     * Create a kitchen order from waiter tablet.
+     */
+    public function createKitchenOrder(Table $table, array $items, ?string $waiterNotes = null): Commande
+    {
+        return DB::transaction(function () use ($table, $items, $waiterNotes) {
+            // Create kitchen order
+            $commande = Commande::create([
+                'user_id' => Auth::id(),
+                'table_id' => $table->id,
+                'total' => 0,
+                'status' => 'en_preparation',
+                'type' => 'kitchen',
+                'waiter_notes' => $waiterNotes,
+            ]);
+
+            $total = 0;
+
+            // Create commande details with notes
+            foreach ($items as $item) {
+                $produit = Produit::findOrFail($item['produit_id']);
+
+                CommandeDetail::create([
+                    'commande_id' => $commande->id,
+                    'produit_id' => $produit->id,
+                    'quantity' => $item['quantity'],
+                    'price' => $produit->price_vente,
+                    'notes' => $item['notes'] ?? null,
+                ]);
+
+                $total += $produit->price_vente * $item['quantity'];
+
+                // Deduct stock
+                $this->stockService->reduceStock(
+                    $produit,
+                    $item['quantity'],
+                    'vente',
+                    $commande->id
+                );
+            }
+
+            // Update total
+            $commande->update(['total' => $total]);
+
+            // Update table status to occupied
+            $table->update(['status' => 'occupied']);
+
+            // Fire event for kitchen notification
+            event(new NewKitchenOrder($commande));
+
+            return $commande->fresh(['details.produit', 'table', 'user']);
+        });
+    }
+
+    /**
+     * Update kitchen order status.
+     */
+    public function updateKitchenOrderStatus(Commande $commande, string $status): Commande
+    {
+        if (!$commande->isKitchenOrder()) {
+            throw new \InvalidArgumentException('Cette commande n\'est pas une commande cuisine.');
+        }
+
+        $validStatuses = ['en_preparation', 'servi', 'annule'];
+        if (!in_array($status, $validStatuses)) {
+            throw new \InvalidArgumentException('Statut invalide.');
+        }
+
+        $commande->update(['status' => $status]);
+
+        // If order is served, free the table
+        if ($status === 'servi' && $commande->table) {
+            $commande->table->update(['status' => 'free']);
+        }
+
+        return $commande->fresh();
+    }
+
+    /**
+     * Get kitchen orders (orders in preparation).
+     */
+    public function getKitchenOrders(): Collection
+    {
+        return Commande::kitchen()
+            ->whereIn('status', ['en_preparation', 'servi'])
+            ->with(['details.produit', 'table', 'user'])
+            ->latest()
+            ->get();
+    }
+
+    /**
+     * Get active kitchen orders (in preparation only).
+     */
+    public function getActiveKitchenOrders(): Collection
+    {
+        return Commande::kitchen()
+            ->enPreparation()
+            ->with(['details.produit', 'table', 'user'])
+            ->oldest()
+            ->get();
+    }
+
+    /**
+     * Generate kitchen ticket data.
+     */
+    public function generateKitchenTicket(Commande $commande): array
+    {
+        if (!$commande->isKitchenOrder()) {
+            throw new \InvalidArgumentException('Cette commande n\'est pas une commande cuisine.');
+        }
+
+        return [
+            'order_id' => $commande->id,
+            'table_number' => $commande->table?->numero ?? 'N/A',
+            'table_name' => $commande->table?->name ?? 'Non assignée',
+            'waiter_name' => $commande->user?->name ?? 'Système',
+            'waiter_notes' => $commande->waiter_notes,
+            'items' => $commande->details->map(function ($detail) {
+                return [
+                    'product_name' => $detail->produit->name,
+                    'quantity' => $detail->quantity,
+                    'notes' => $detail->notes,
+                ];
+            }),
+            'created_at' => $commande->created_at,
+            'status' => $commande->status,
+        ];
     }
 }
