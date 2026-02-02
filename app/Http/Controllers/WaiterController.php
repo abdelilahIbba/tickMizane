@@ -24,7 +24,7 @@ class WaiterController extends Controller
      */
     public function index()
     {
-        $tables = Table::orderBy('numero')->get();
+        $tables = Table::orderBy('id')->get();
         
         return view('waiter.index', compact('tables'));
     }

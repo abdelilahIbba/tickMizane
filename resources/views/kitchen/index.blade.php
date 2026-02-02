@@ -1,8 +1,4 @@
-@extends('layouts.app')
-
-@section('title', 'Cuisine - Dashboard')
-
-@section('content')
+<x-layout.app title="Cuisine - Dashboard">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
@@ -139,7 +135,6 @@
         </div>
     </div>
 </div>
-@endsection
 
 @push('scripts')
 <script>
@@ -207,3 +202,4 @@ function markOrderServed(orderId) {
 }
 </script>
 @endpush
+</x-layout.app>

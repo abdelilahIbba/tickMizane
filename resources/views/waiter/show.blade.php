@@ -1,8 +1,4 @@
-@extends('layouts.app')
-
-@section('title', 'Commande #' . $commande->id)
-
-@section('content')
+<x-layout.app title="Commande #{{ $commande->id }}">
 <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
@@ -116,4 +112,4 @@
         </div>
     </div>
 </div>
-@endsection
+</x-layout.app>
