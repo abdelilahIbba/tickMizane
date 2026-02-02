@@ -127,6 +127,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/tables/{table}/occupy', [TableController::class, 'occupy'])->name('tables.occupy');
         Route::post('/tables/{table}/release', [TableController::class, 'release'])->name('tables.release');
         Route::post('/tables/{table}/transfer', [TableController::class, 'transfer'])->name('tables.transfer');
+        Route::post('/tables/{table}/cashout', [TableController::class, 'cashout'])->name('tables.cashout');
         Route::post('/tables/{table}/assign-serveur', [TableController::class, 'assignServeur'])->name('tables.assign-serveur');
         
         // Table API (for AJAX)

@@ -27,11 +27,18 @@ class PosController extends Controller
             ->get();
         
         $table = null;
+        $existingVente = null;
+        
         if ($request->has('table')) {
-            $table = Table::find($request->table);
+            $table = Table::with('currentVente.details.produit')->find($request->table);
+            
+            // If table has an unpaid vente, load it to allow adding more items
+            if ($table && $table->currentVente && $table->currentVente->status === 'unpaid') {
+                $existingVente = $table->currentVente;
+            }
         }
         
-        return view('pos.index', compact('categories', 'products', 'table'));
+        return view('pos.index', compact('categories', 'products', 'table', 'existingVente'));
     }
 
     /**
@@ -74,58 +81,121 @@ class PosController extends Controller
                 ];
             }
 
-            // Create vente
-            $vente = Vente::create([
-                'user_id' => Auth::id(),
-                'table_id' => $request->table_id,
-                'total' => $total,
-                'payment_method' => $request->payment_method,
-                'status' => 'paid',
-            ]);
+            $isTableOrder = !empty($request->table_id);
 
-            // Create vente details and update stock
-            foreach ($items as $item) {
-                VenteDetail::create([
-                    'vente_id' => $vente->id,
-                    'produit_id' => $item['produit']->id,
-                    'quantity' => $item['quantity'],
-                    'price' => $item['price'],
-                    'total_line' => $item['total_line'],
-                ]);
-
-                // Decrement stock
-                $item['produit']->decrementStock($item['quantity']);
-
-                // Record stock movement
-                StockMovement::create([
-                    'produit_id' => $item['produit']->id,
-                    'type' => 'out',
-                    'quantity' => $item['quantity'],
-                    'reason' => 'vente',
-                    'reference_id' => $vente->id,
-                ]);
+            // Check if there's an existing unpaid vente for this table
+            $existingVente = null;
+            if ($isTableOrder) {
+                $table = Table::with('currentVente')->find($request->table_id);
+                if ($table && $table->currentVente && $table->currentVente->status === 'unpaid') {
+                    $existingVente = $table->currentVente;
+                }
             }
 
-            // Create paiement
-            Paiement::create([
-                'vente_id' => $vente->id,
-                'amount' => $total,
-                'method' => $request->payment_method,
-            ]);
+            // Either update existing vente or create new one
+            if ($existingVente) {
+                // ADD TO EXISTING VENTE
+                $vente = $existingVente;
+                
+                // Add new items to the vente
+                foreach ($items as $item) {
+                    VenteDetail::create([
+                        'vente_id' => $vente->id,
+                        'produit_id' => $item['produit']->id,
+                        'quantity' => $item['quantity'],
+                        'price' => $item['price'],
+                        'total_line' => $item['total_line'],
+                    ]);
 
-            // Free table if assigned
-            if ($request->table_id) {
-                Table::find($request->table_id)?->markFree();
+                    // Decrement stock
+                    $item['produit']->decrementStock($item['quantity']);
+
+                    // Record stock movement
+                    StockMovement::create([
+                        'produit_id' => $item['produit']->id,
+                        'type' => 'out',
+                        'quantity' => $item['quantity'],
+                        'reason' => 'vente',
+                        'reference_id' => $vente->id,
+                    ]);
+                }
+                
+                // Update total
+                $vente->update([
+                    'total' => $vente->total + $total,
+                    'payment_method' => $request->payment_method,
+                ]);
+                
+                $message = 'Articles ajoutés à la commande.';
+            } else {
+                // CREATE NEW VENTE
+                // For table orders: status = 'unpaid' (will be paid via encaissement)
+                // For standalone orders: status = 'paid' (paid immediately)
+                $vente = Vente::create([
+                    'user_id' => Auth::id(),
+                    'table_id' => $request->table_id,
+                    'total' => $total,
+                    'payment_method' => $request->payment_method,
+                    'status' => $isTableOrder ? 'unpaid' : 'paid',
+                ]);
+
+                // Create vente details and update stock
+                foreach ($items as $item) {
+                    VenteDetail::create([
+                        'vente_id' => $vente->id,
+                        'produit_id' => $item['produit']->id,
+                        'quantity' => $item['quantity'],
+                        'price' => $item['price'],
+                        'total_line' => $item['total_line'],
+                    ]);
+
+                    // Decrement stock
+                    $item['produit']->decrementStock($item['quantity']);
+
+                    // Record stock movement
+                    StockMovement::create([
+                        'produit_id' => $item['produit']->id,
+                        'type' => 'out',
+                        'quantity' => $item['quantity'],
+                        'reason' => 'vente',
+                        'reference_id' => $vente->id,
+                    ]);
+                }
+                
+                $message = $isTableOrder ? 'Commande créée pour la table.' : 'Vente enregistrée avec succès';
+            }
+
+            $redirectToTables = false;
+
+            if ($isTableOrder) {
+                // TABLE ORDER: Occupy table if not already, DO NOT create payment yet
+                $table = Table::find($request->table_id);
+                if ($table) {
+                    if (!$table->isOccupied()) {
+                        $table->occupy($vente, Auth::user());
+                    }
+                    $redirectToTables = true;
+                }
+            } else {
+                // STANDALONE ORDER: Create payment immediately (only for new ventes)
+                if (!$existingVente) {
+                    Paiement::create([
+                        'vente_id' => $vente->id,
+                        'amount' => $total,
+                        'method' => $request->payment_method,
+                    ]);
+                }
             }
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Vente enregistrée avec succès',
+                'message' => $message,
                 'vente_id' => $vente->id,
-                'total' => $total,
-                'change' => $request->amount_received ? $request->amount_received - $total : 0,
+                'total' => (float) $vente->total,
+                'change' => !$isTableOrder && $request->amount_received ? (float) ($request->amount_received - $vente->total) : 0.0,
+                'redirect_to_tables' => $redirectToTables,
             ]);
 
         } catch (\Exception $e) {

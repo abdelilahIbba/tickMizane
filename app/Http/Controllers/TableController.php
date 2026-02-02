@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Table;
 use App\Models\User;
 use App\Models\Vente;
+use App\Models\Paiement;
+use App\Services\PaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TableController extends Controller
 {
@@ -377,6 +380,115 @@ class TableController extends Controller
         return redirect()
             ->route('tables.index')
             ->with('success', 'Commande transférée vers la table ' . $targetTable->name);
+    }
+
+    /**
+     * Cashout/complete payment for a table's order.
+     */
+    public function cashout(Request $request, Table $table)
+    {
+        // Check if table is occupied
+        if (!$table->isOccupied()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cette table n\'est pas occupée.',
+                ], 422);
+            }
+            return back()->with('error', 'Cette table n\'est pas occupée.');
+        }
+
+        // Check if there's an active vente
+        if (!$table->currentVente) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucune vente active pour cette table.',
+                ], 422);
+            }
+            return back()->with('error', 'Aucune vente active pour cette table.');
+        }
+
+        $vente = $table->currentVente;
+        $total = (float) $vente->total;
+        
+        // Check if vente is already paid
+        if ($vente->status === 'paid') {
+            // Vente already paid - just free the table and redirect
+            $table->release();
+            
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'La table a été libérée.',
+                    'total' => $total,
+                    'change' => 0.0,
+                    'vente_id' => $vente->id,
+                    'already_paid' => true,
+                ]);
+            }
+            
+            return redirect()
+                ->route('tables.index')
+                ->with('success', 'La table ' . $table->name . ' a été libérée. La commande était déjà encaissée.');
+        }
+
+        $validated = $request->validate([
+            'payment_method' => 'required|in:cash,carte,mixte',
+            'amount_received' => 'nullable|numeric|min:0',
+        ]);
+
+        try {
+            $total = (float) $vente->total;
+            $paymentService = app(PaymentService::class);
+
+            // Process payment through PaymentService
+            $paymentService->processPayment(
+                $vente, 
+                $total, 
+                $validated['payment_method']
+            );
+
+            // The PaymentService automatically updates vente status and frees the table
+            // But let's ensure the table is properly released
+            if ($table->fresh()->isOccupied()) {
+                $table->release();
+            }
+
+            $change = isset($validated['amount_received']) && $validated['amount_received'] > $total
+                ? (float) ($validated['amount_received'] - $total)
+                : 0.0;
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Paiement encaissé avec succès.',
+                    'total' => (float) $total,
+                    'change' => (float) $change,
+                    'vente_id' => $vente->id,
+                ]);
+            }
+
+            return redirect()
+                ->route('tables.index')
+                ->with('success', 'Paiement encaissé avec succès. Table ' . $table->name . ' libérée.');
+
+        } catch (\Exception $e) {
+            Log::error('Cashout error: ' . $e->getMessage(), [
+                'table_id' => $table->id,
+                'vente_id' => $vente->id ?? null,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de l\'encaissement: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Erreur lors de l\'encaissement: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -224,6 +224,84 @@
                 </div>
             </div>
         </div>
+
+        {{-- Payment Modal --}}
+        <div x-show="showPaymentModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" x-transition>
+            <div class="flex items-center justify-center min-h-screen px-4">
+                <div class="fixed inset-0 bg-black/70" @click="showPaymentModal = false"></div>
+                <div class="relative bg-gray-800 rounded-2xl max-w-md w-full p-6">
+                    <h3 class="text-xl font-bold text-white mb-6">Encaisser le paiement</h3>
+                    
+                    <div class="space-y-6">
+                        {{-- Total Amount --}}
+                        <div class="bg-gray-900 rounded-xl p-4">
+                            <p class="text-gray-400 text-sm mb-1">Total à encaisser</p>
+                            <p class="text-3xl font-bold text-amber-400">{{ number_format($table->getCurrentBillAmount(), 2) }} DH</p>
+                        </div>
+
+                        {{-- Payment Method --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Mode de paiement</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button 
+                                    @click="paymentMethod = 'cash'"
+                                    :class="paymentMethod === 'cash' ? 'bg-amber-500 text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
+                                    class="py-3 px-4 font-semibold rounded-xl transition-colors"
+                                >
+                                    Espèces
+                                </button>
+                                <button 
+                                    @click="paymentMethod = 'carte'"
+                                    :class="paymentMethod === 'carte' ? 'bg-amber-500 text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
+                                    class="py-3 px-4 font-semibold rounded-xl transition-colors"
+                                >
+                                    Carte
+                                </button>
+                                <button 
+                                    @click="paymentMethod = 'mixte'"
+                                    :class="paymentMethod === 'mixte' ? 'bg-amber-500 text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
+                                    class="py-3 px-4 font-semibold rounded-xl transition-colors"
+                                >
+                                    Mixte
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Amount Received (for cash) --}}
+                        <div x-show="paymentMethod === 'cash'">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Montant reçu (optionnel)</label>
+                            <input 
+                                type="number" 
+                                x-model.number="amountReceived"
+                                step="0.01"
+                                min="{{ $table->getCurrentBillAmount() }}"
+                                class="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                placeholder="{{ number_format($table->getCurrentBillAmount(), 2) }}"
+                            >
+                            <p x-show="amountReceived > {{ $table->getCurrentBillAmount() }}" class="text-sm text-emerald-400 mt-2">
+                                Monnaie à rendre: <span x-text="(amountReceived - {{ $table->getCurrentBillAmount() }}).toFixed(2)"></span> DH
+                            </p>
+                        </div>
+
+                        {{-- Actions --}}
+                        <div class="flex gap-3">
+                            <button 
+                                @click="showPaymentModal = false" 
+                                class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-xl transition-colors"
+                            >
+                                Annuler
+                            </button>
+                            <button 
+                                @click="cashout()" 
+                                class="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-colors"
+                            >
+                                Encaisser
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <script>
@@ -231,6 +309,8 @@
             return {
                 showTransferModal: false,
                 showPaymentModal: false,
+                paymentMethod: 'cash',
+                amountReceived: null,
                 
                 async occupyTable() {
                     try {
@@ -283,6 +363,99 @@
                         }
                     } catch (error) {
                         console.error('Error:', error);
+                    }
+                },
+                
+                async cashout() {
+                    try {
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                        if (!csrfToken) {
+                            this.$dispatch('notify', { type: 'error', message: 'Token CSRF non trouvé' });
+                            return;
+                        }
+
+                        // Close modal and show loading state
+                        this.showPaymentModal = false;
+
+                        const response = await fetch('{{ route("tables.cashout", $table) }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                payment_method: this.paymentMethod,
+                                amount_received: this.amountReceived
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({ message: 'Erreur inconnue' }));
+                            console.error('Response error:', errorData);
+                            
+                            // Show error message
+                            if (this.$dispatch) {
+                                this.$dispatch('notify', { 
+                                    type: 'error', 
+                                    message: errorData.message || `Erreur HTTP: ${response.status}` 
+                                });
+                            } else {
+                                alert('Erreur: ' + (errorData.message || `Erreur HTTP: ${response.status}`));
+                            }
+                            return;
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            // Show success message with safe numeric conversion
+                            const total = Number(data.total || 0);
+                            const change = Number(data.change || 0);
+                            
+                            let message = '';
+                            if (data.already_paid) {
+                                message = `Table libérée. Commande déjà encaissée (${total.toFixed(2)} DH)`;
+                            } else {
+                                message = `Paiement encaissé! Total: ${total.toFixed(2)} DH`;
+                                if (change > 0) {
+                                    message += ` - Monnaie: ${change.toFixed(2)} DH`;
+                                }
+                            }
+                            
+                            if (this.$dispatch) {
+                                this.$dispatch('notify', { 
+                                    type: 'success', 
+                                    message: message
+                                });
+                            } else {
+                                alert(message);
+                            }
+                            
+                            // Redirect after short delay
+                            setTimeout(() => {
+                                window.location.href = '/tables';
+                            }, 1500);
+                        } else {
+                            if (this.$dispatch) {
+                                this.$dispatch('notify', { 
+                                    type: 'error', 
+                                    message: data.message || 'Une erreur est survenue' 
+                                });
+                            } else {
+                                alert('Erreur: ' + (data.message || 'Une erreur est survenue'));
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error details:', error);
+                        if (this.$dispatch) {
+                            this.$dispatch('notify', { 
+                                type: 'error', 
+                                message: 'Erreur de connexion: ' + error.message 
+                            });
+                        } else {
+                            alert('Erreur de connexion: ' + error.message);
+                        }
                     }
                 }
             }

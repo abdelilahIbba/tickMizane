@@ -1,7 +1,27 @@
 <x-layout.app title="Point de Vente">
+    {{-- Table Info Banner --}}
+    @if(isset($table) && $table)
+    <div class="bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-4 text-gray-900 shadow-lg">
+        <div class="flex items-center justify-between max-w-7xl mx-auto">
+            <div class="flex items-center gap-3">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+                <div>
+                    <h3 class="text-xl font-bold">{{ $table->name }}</h3>
+                    <p class="text-sm opacity-90">{{ $table->places }} places • {{ $table->getZoneDisplayName() }}</p>
+                </div>
+            </div>
+            <a href="{{ route('tables.index') }}" class="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium">
+                Retour aux tables
+            </a>
+        </div>
+    </div>
+    @endif
+
     <div 
         x-data="posSystem()"
-        class="h-[calc(100vh-64px)] flex flex-col lg:flex-row"
+        class="h-[calc(100vh-{{ isset($table) && $table ? '144' : '64' }}px)] flex flex-col lg:flex-row"
     >
         {{-- Products Section --}}
         <div class="flex-1 flex flex-col overflow-hidden">
@@ -197,6 +217,21 @@
                     </div>
                 </div>
                 
+                @if(isset($table) && $table)
+                {{-- Table Order Info --}}
+                <div class="bg-blue-500/20 border border-blue-500/50 rounded-xl p-4">
+                    <div class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <div class="text-sm text-blue-300">
+                            <p class="font-semibold mb-1">Commande pour {{ $table->name }}</p>
+                            <p class="text-blue-400">Cette commande sera marquée comme impayée. L'encaissement se fera depuis la table.</p>
+                        </div>
+                    </div>
+                </div>
+                @endif
+                
                 {{-- Checkout Button --}}
                 <button 
                     @click="checkout()"
@@ -214,7 +249,7 @@
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                     </template>
-                    <span x-text="loading ? 'Traitement...' : 'Valider la vente'"></span>
+                    <span x-text="loading ? 'Traitement...' : {{ isset($table) && $table ? "'Créer la commande'" : "'Valider la vente'" }}"></span>
                 </button>
                 
                 {{-- Clear Cart --}}
@@ -349,19 +384,24 @@
                         const data = await response.json();
                         
                         if (data.success) {
-                            this.$dispatch('notify', { type: 'success', message: 'Vente validée! Total: ' + this.total.toFixed(2) + ' DH' });
+                            this.$dispatch('notify', { type: 'success', message: data.message || 'Vente validée!' });
                             this.cart = [];
                             
-                            // Update local stock
-                            this.cart.forEach(item => {
-                                const product = this.products.find(p => p.id === item.id);
-                                if (product) {
-                                    product.stock -= item.quantity;
-                                }
-                            });
-                            
-                            // Reload page to get fresh stock data
-                            setTimeout(() => window.location.reload(), 1500);
+                            // Redirect to tables if this was a table order
+                            if (data.redirect_to_tables) {
+                                setTimeout(() => window.location.href = '/tables', 1500);
+                            } else {
+                                // Update local stock for standalone orders
+                                this.cart.forEach(item => {
+                                    const product = this.products.find(p => p.id === item.id);
+                                    if (product) {
+                                        product.stock -= item.quantity;
+                                    }
+                                });
+                                
+                                // Reload page to get fresh stock data
+                                setTimeout(() => window.location.reload(), 1500);
+                            }
                         } else {
                             this.$dispatch('notify', { type: 'error', message: data.message || 'Erreur lors de la vente' });
                         }

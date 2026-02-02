@@ -29,6 +29,12 @@
             <span>Caissier:</span>
             <span>{{ $vente->user->name ?? 'N/A' }}</span>
         </div>
+        @if($vente && $vente->table_id)
+            <div class="flex justify-between font-semibold text-amber-600">
+                <span>Table:</span>
+                <span>{{ $vente->table->name ?? 'N/A' }}</span>
+            </div>
+        @endif
     </div>
     
     <div class="border-t border-dashed border-gray-300 my-3"></div>
