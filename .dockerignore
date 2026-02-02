@@ -1,0 +1,15 @@
+.git
+.gitignore
+/node_modules
+/vendor
+.env
+.env.local
+.env.*.local
+/storage/logs/*
+/storage/framework/*
+/bootstrap/cache/*
+.DS_Store
+.vscode
+.idea
+*.log
+*.sock
