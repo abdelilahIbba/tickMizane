@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('commande_details', function (Blueprint $table) {
             // Add notes field for special instructions per product
-            $table->text('notes')->nullable()->after('total');
+            $table->text('notes')->nullable()->after('price');
         });
     }
 
