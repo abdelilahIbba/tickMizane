@@ -14,15 +14,15 @@ trait LogsHistorique
     public static function bootLogsHistorique(): void
     {
         static::created(function ($model) {
-            $model->logHistorique('create');
+            $model->logHistorique('created');
         });
 
         static::updated(function ($model) {
-            $model->logHistorique('update');
+            $model->logHistorique('updated');
         });
 
         static::deleted(function ($model) {
-            $model->logHistorique('delete');
+            $model->logHistorique('deleted');
         });
     }
 
@@ -44,7 +44,7 @@ trait LogsHistorique
         $oldValues = null;
         $newValues = null;
         
-        if ($action === 'update') {
+        if ($action === 'updated') {
             $oldValues = $this->getOriginal();
             $newValues = $this->getChanges();
             
@@ -60,11 +60,6 @@ trait LogsHistorique
             'table_name' => $tableName,
             'record_id' => $this->id,
             'description' => $description,
-            'ip_address' => Request::ip(),
-            'user_agent' => Request::userAgent(),
-            'old_values' => $oldValues ? json_encode($oldValues) : null,
-            'new_values' => $newValues ? json_encode($newValues) : null,
-            'device_type' => $this->detectDeviceType(Request::userAgent()),
         ]);
     }
 
@@ -76,9 +71,9 @@ trait LogsHistorique
         $identifier = $this->getHistoriqueIdentifier();
         
         return match($action) {
-            'create' => "{$modelName} '{$identifier}' créé",
-            'update' => "{$modelName} '{$identifier}' modifié",
-            'delete' => "{$modelName} '{$identifier}' supprimé",
+            'created' => "{$modelName} '{$identifier}' créé",
+            'updated' => "{$modelName} '{$identifier}' modifié",
+            'deleted' => "{$modelName} '{$identifier}' supprimé",
             default => "{$action} sur {$modelName} '{$identifier}'",
         };
     }

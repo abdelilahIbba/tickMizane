@@ -314,12 +314,60 @@ window.updateQuantity = function(index, delta) {
     updateCart();
 }
 
-// Form submission
+// Form submission - Use AJAX to properly send JSON data
 document.getElementById('orderForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
     if (cart.length === 0) {
-        e.preventDefault();
         alert('Veuillez ajouter au moins un produit');
+        return;
     }
+    
+    const submitButton = document.getElementById('submitOrder');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Envoi en cours...';
+    
+    // Get waiter notes
+    const waiterNotes = document.querySelector('[name="waiter_notes"]').value;
+    
+    // Prepare items for submission
+    const items = cart.map(item => ({
+        produit_id: parseInt(item.produit_id),
+        quantity: parseInt(item.quantity),
+        notes: item.notes || null
+    }));
+    
+    // Send via fetch with proper JSON headers
+    fetch('{{ route("waiter.order.store", $table) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+        },
+        body: JSON.stringify({
+            items: items,
+            waiter_notes: waiterNotes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message and redirect
+            alert('Commande envoyée à la cuisine !');
+            window.location.href = '{{ route("waiter.index") }}';
+        } else {
+            alert('Erreur: ' + (data.message || 'Une erreur est survenue'));
+            submitButton.disabled = false;
+            submitButton.textContent = 'Envoyer à la cuisine';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erreur de connexion. Veuillez réessayer.');
+        submitButton.disabled = false;
+        submitButton.textContent = 'Envoyer à la cuisine';
+    });
 });
 </script>
 @endpush

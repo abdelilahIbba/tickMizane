@@ -17,6 +17,11 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\WaiterController;
 use App\Http\Controllers\KitchenController;
+use App\Http\Controllers\CashierPosController;
+use App\Http\Controllers\Settings\UserManagementController;
+use App\Http\Controllers\Settings\PermissionManagementController;
+use App\Http\Controllers\Settings\SystemSettingsController;
+use App\Http\Controllers\Settings\DocumentationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,8 +38,18 @@ Route::get('/', function () {
 |--------------------------------------------------------------------------
 */
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+/*
+|--------------------------------------------------------------------------
+| Password Change Routes (exempt from ForcePasswordReset middleware)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->withoutMiddleware([\App\Http\Middleware\ForcePasswordReset::class])->group(function () {
+    Route::get('/password/change', [AuthController::class, 'showChangePassword'])->name('password.change');
+    Route::post('/password/change', [AuthController::class, 'changePassword'])->name('password.change.submit');
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -100,6 +115,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
         Route::post('/pos/checkout', [PosController::class, 'checkout'])->name('pos.checkout');
         
+        // Cashier - Pending Kitchen Orders
+        Route::get('/cashier/pending', [CashierPosController::class, 'index'])->name('cashier.pending');
+        Route::get('/cashier/order/{commande}', [CashierPosController::class, 'showOrder'])->name('cashier.show-order');
+        Route::get('/cashier/order/{commande}/payment', [CashierPosController::class, 'show'])->name('cashier.payment');
+        Route::post('/cashier/order/{commande}/payment', [CashierPosController::class, 'processPayment'])->name('cashier.process-payment');
+        Route::get('/cashier/history', [CashierPosController::class, 'history'])->name('cashier.history');
+        Route::get('/cashier/order/{commande}/receipt', [CashierPosController::class, 'printReceipt'])->name('cashier.receipt');
+        Route::get('/cashier/pending-orders', [CashierPosController::class, 'getPendingOrders'])->name('cashier.pending-orders');
+        Route::get('/cashier/stats', [CashierPosController::class, 'stats'])->name('cashier.stats');
+        
         // Ventes (Sales)
         Route::get('/ventes', [VenteController::class, 'index'])->name('ventes.index');
         Route::get('/ventes/{vente}', [VenteController::class, 'show'])->name('ventes.show');
@@ -158,14 +183,57 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:admin'])->group(function () {
         // Kitchen Dashboard
         Route::get('/kitchen', [KitchenController::class, 'index'])->name('kitchen.index');
+        Route::get('/kitchen/display', [KitchenController::class, 'display'])->name('kitchen.display');
         Route::get('/kitchen/order/{commande}', [KitchenController::class, 'show'])->name('kitchen.order.show');
         Route::post('/kitchen/order/{commande}/status', [KitchenController::class, 'updateStatus'])->name('kitchen.order.status');
+        Route::post('/kitchen/order/{commande}/ready', [KitchenController::class, 'markReady'])->name('kitchen.order.ready');
         Route::post('/kitchen/order/{commande}/served', [KitchenController::class, 'markServed'])->name('kitchen.order.served');
         Route::get('/kitchen/order/{commande}/ticket', [KitchenController::class, 'printTicket'])->name('kitchen.ticket');
         
         // AJAX endpoints
         Route::get('/kitchen/orders/active', [KitchenController::class, 'getActiveOrders'])->name('kitchen.orders.active');
         Route::get('/kitchen/stats', [KitchenController::class, 'stats'])->name('kitchen.stats');
+
+        // Settings - User Management
+        Route::prefix('settings')->name('settings.')->group(function () {
+            Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
+            Route::get('/users/create', [UserManagementController::class, 'create'])->name('users.create');
+            Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
+            Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
+            Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
+            Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
+            Route::get('/users/{user}/reset-password', [UserManagementController::class, 'showResetPassword'])->name('users.reset-password');
+            Route::post('/users/{user}/reset-password', [UserManagementController::class, 'resetPassword'])->name('users.reset-password.submit');
+            Route::post('/users/{user}/activate', [UserManagementController::class, 'activate'])->name('users.activate');
+            Route::post('/users/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('users.deactivate');
+
+            // Permissions Management
+            Route::get('/permissions', [PermissionManagementController::class, 'index'])->name('permissions.index');
+            Route::get('/permissions/{user}', [PermissionManagementController::class, 'show'])->name('permissions.show');
+            Route::post('/permissions/{user}', [PermissionManagementController::class, 'update'])->name('permissions.update');
+            Route::post('/permissions/{user}/grant-all', [PermissionManagementController::class, 'grantAll'])->name('permissions.grant-all');
+            Route::post('/permissions/{user}/revoke-all', [PermissionManagementController::class, 'revokeAll'])->name('permissions.revoke-all');
+
+            // System Settings
+            Route::get('/system', [SystemSettingsController::class, 'index'])->name('system.index');
+            Route::get('/system/{group}', [SystemSettingsController::class, 'showGroup'])->name('system.group');
+            Route::post('/system/{group}', [SystemSettingsController::class, 'updateGroup'])->name('system.update');
+            Route::post('/system/{group}/reset', [SystemSettingsController::class, 'resetGroup'])->name('system.reset');
+
+            // Documentation Visibility (Admin)
+            Route::get('/documentation', [DocumentationController::class, 'index'])->name('documentation.index');
+            Route::post('/documentation/{documentation}/visibility', [DocumentationController::class, 'updateVisibility'])->name('documentation.updateVisibility');
+        });
+    });
+    
+    /*
+    |--------------------------------------------------------------------------
+    | Documentation Viewer (All authenticated users)
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/docs', [\App\Http\Controllers\DocumentationController::class, 'index'])->name('docs.index');
+        Route::get('/docs/{slug}', [\App\Http\Controllers\DocumentationController::class, 'show'])->name('docs.show');
     });
     
     /*

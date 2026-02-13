@@ -33,6 +33,16 @@ class KitchenController extends Controller
     }
 
     /**
+     * Show kitchen large display.
+     */
+    public function display()
+    {
+        // For the large display, we want all active orders sorted by time
+        $orders = $this->orderService->getActiveKitchenOrders();
+        return view('kitchen.display', compact('orders'));
+    }
+
+    /**
      * Show order details.
      */
     public function show(Commande $commande)
@@ -53,7 +63,7 @@ class KitchenController extends Controller
     public function updateStatus(Request $request, Commande $commande)
     {
         $validated = $request->validate([
-            'status' => 'required|in:en_preparation,servi,annule',
+            'status' => 'required|in:en_cuisine,en_preparation,pret,servi,annule',
         ]);
 
         try {
@@ -75,6 +85,38 @@ class KitchenController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage(),
+                ], 422);
+            }
+
+            return back()->with('error', 'Erreur: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Mark order as ready (prêt).
+     */
+    public function markReady(Request $request, Commande $commande)
+    {
+        try {
+            $this->orderService->updateKitchenOrderStatus($commande, 'pret');
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Commande marquée comme prête',
+                    'order_id' => $commande->id
+                ]);
+            }
+
+            return redirect()
+                ->route('kitchen.index')
+                ->with('success', 'Commande marquée comme prête');
+                
+        } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage()
                 ], 422);
             }
 
@@ -125,20 +167,20 @@ class KitchenController extends Controller
     public function getActiveOrders()
     {
         $orders = $this->orderService->getActiveKitchenOrders();
+        
+        $today = today();
+        $stats = [
+            'active_orders' => $orders->where('status', 'en_cuisine')->count(),
+            'preparation' => $orders->where('status', 'en_preparation')->count(),
+            'served_today' => Commande::kitchen()->servi()->whereDate('created_at', $today)->count(),
+            'total_today' => Commande::kitchen()->whereDate('created_at', $today)->count(), // Total orders today
+            'average_time' => 0 // Placeholder
+        ];
 
         return response()->json([
-            'orders' => $orders->map(function ($order) {
-                return [
-                    'id' => $order->id,
-                    'table_numero' => $order->table?->numero,
-                    'table_name' => $order->table?->name,
-                    'waiter_name' => $order->user?->name,
-                    'items_count' => $order->details->count(),
-                    'created_at' => $order->created_at->format('H:i'),
-                    'time_ago' => $order->created_at->diffForHumans(),
-                    'status' => $order->status,
-                ];
-            }),
+            'orders' => $orders,
+            'html' => view('kitchen.partials.active-orders-grid', ['activeOrders' => $orders])->render(),
+            'stats' => $stats
         ]);
     }
 

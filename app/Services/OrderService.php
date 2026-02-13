@@ -226,12 +226,12 @@ class OrderService
     public function createKitchenOrder(Table $table, array $items, ?string $waiterNotes = null): Commande
     {
         return DB::transaction(function () use ($table, $items, $waiterNotes) {
-            // Create kitchen order
+            // Create kitchen order with 'en_cuisine' status
             $commande = Commande::create([
                 'user_id' => Auth::id(),
                 'table_id' => $table->id,
                 'total' => 0,
-                'status' => 'en_preparation',
+                'status' => 'en_cuisine', // Order sent to kitchen
                 'type' => 'kitchen',
                 'waiter_notes' => $waiterNotes,
             ]);
@@ -283,43 +283,135 @@ class OrderService
             throw new \InvalidArgumentException('Cette commande n\'est pas une commande cuisine.');
         }
 
-        $validStatuses = ['en_preparation', 'servi', 'annule'];
+        $validStatuses = ['en_cuisine', 'en_preparation', 'pret', 'servi', 'payee', 'annule'];
         if (!in_array($status, $validStatuses)) {
             throw new \InvalidArgumentException('Statut invalide.');
         }
 
-        $commande->update(['status' => $status]);
+        $oldStatus = $commande->status;
+        
+        $data = ['status' => $status];
+        
+        // Set validated_at timestamp when starting preparation
+        if ($status === 'en_preparation' && $oldStatus === 'en_cuisine') {
+            $data['validated_at'] = now();
+        }
 
-        // If order is served, free the table
-        if ($status === 'servi' && $commande->table) {
-            $commande->table->update(['status' => 'free']);
+        // Set ready_at timestamp when marking as ready
+        if ($status === 'pret' && $oldStatus !== 'pret') {
+            $data['ready_at'] = now();
+        }
+
+        $commande->update($data);
+
+        // Log the status transition
+        $commande->logCustomAction('status_change', "Statut modifié: {$oldStatus} → {$status}");
+
+        // Table status logic
+        if ($status === 'annule' && $commande->table) {
+            // Check if table has other pending orders
+            $otherOrders = Commande::where('table_id', $commande->table_id)
+                ->where('id', '!=', $commande->id)
+                ->pendingPayment()
+                ->exists();
+            
+            if (!$otherOrders) {
+                $commande->table->update(['status' => 'free']);
+            }
         }
 
         return $commande->fresh();
     }
 
     /**
-     * Get kitchen orders (orders in preparation).
+     * Get kitchen orders (all active kitchen orders).
      */
     public function getKitchenOrders(): Collection
     {
         return Commande::kitchen()
-            ->whereIn('status', ['en_preparation', 'servi'])
+            ->whereIn('status', ['en_cuisine', 'en_preparation', 'pret', 'servi'])
             ->with(['details.produit', 'table', 'user'])
             ->latest()
             ->get();
     }
 
     /**
-     * Get active kitchen orders (in preparation only).
+     * Get active kitchen orders (in kitchen, in preparation, or ready).
      */
     public function getActiveKitchenOrders(): Collection
     {
         return Commande::kitchen()
-            ->enPreparation()
+            ->whereIn('status', ['en_cuisine', 'en_preparation', 'pret'])
             ->with(['details.produit', 'table', 'user'])
             ->oldest()
             ->get();
+    }
+
+    /**
+     * Get orders pending payment for cashier.
+     */
+    public function getPendingPaymentOrders(): Collection
+    {
+        return Commande::kitchen()
+            ->pendingPayment()
+            ->with(['details.produit', 'table', 'user'])
+            ->oldest()
+            ->get();
+    }
+
+    /**
+     * Get orders ready for payment (pret or servi).
+     */
+    public function getReadyForPaymentOrders(): Collection
+    {
+        return Commande::kitchen()
+            ->readyForPayment()
+            ->with(['details.produit', 'table', 'user'])
+            ->oldest()
+            ->get();
+    }
+
+    /**
+     * Process payment for a kitchen order.
+     */
+    public function processKitchenOrderPayment(Commande $commande, string $paymentMethod, ?float $amountReceived = null): Commande
+    {
+        if (!$commande->isKitchenOrder()) {
+            throw new \InvalidArgumentException('Cette commande n\'est pas une commande cuisine.');
+        }
+
+        if ($commande->isPaid()) {
+            throw new \InvalidArgumentException('Cette commande est déjà payée.');
+        }
+
+        return DB::transaction(function () use ($commande, $paymentMethod, $amountReceived) {
+            $total = $commande->total;
+            $change = 0;
+
+            if ($paymentMethod === 'cash' && $amountReceived !== null) {
+                $change = max(0, $amountReceived - $total);
+            }
+
+            // Mark order as paid
+            $commande->update(['status' => 'payee']);
+
+            // Free the table if no other pending orders
+            if ($commande->table) {
+                $otherOrders = Commande::where('table_id', $commande->table_id)
+                    ->where('id', '!=', $commande->id)
+                    ->pendingPayment()
+                    ->exists();
+                
+                if (!$otherOrders) {
+                    $commande->table->update(['status' => 'free']);
+                }
+            }
+
+            // Log the payment
+            $commande->logCustomAction('payment', "Paiement de {$total} DH via {$paymentMethod}");
+
+            return $commande->fresh(['details.produit', 'table', 'user']);
+        });
     }
 
     /**

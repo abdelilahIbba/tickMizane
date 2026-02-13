@@ -1,0 +1,7 @@
+# End-to-End Tests
+
+Tests in this directory test complete user journeys:
+- Multi-page workflows
+- Critical business processes
+
+Sprint 4+ will populate this directory with complete order workflow tests.

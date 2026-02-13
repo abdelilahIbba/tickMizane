@@ -15,6 +15,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register custom middleware aliases
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
+            'permission' => \App\Http\Middleware\CheckPermission::class,
+            'force-password-reset' => \App\Http\Middleware\ForcePasswordReset::class,
+        ]);
+        
+        // Add throttle to web group for rate limiting
+        $middleware->web(append: [
+            \App\Http\Middleware\ForcePasswordReset::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

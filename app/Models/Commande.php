@@ -32,6 +32,8 @@ class Commande extends Model
         'status',
         'type',
         'waiter_notes',
+        'validated_at',
+        'ready_at',
     ];
 
     /**
@@ -45,6 +47,8 @@ class Commande extends Model
             'total' => 'decimal:2',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
+            'validated_at' => 'datetime',
+            'ready_at' => 'datetime',
         ];
     }
 
@@ -86,6 +90,14 @@ class Commande extends Model
         return $this->belongsTo(Table::class);
     }
 
+    /**
+     * Get all paiements for this commande.
+     */
+    public function paiements(): HasMany
+    {
+        return $this->hasMany(Paiement::class);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Scopes
@@ -125,6 +137,14 @@ class Commande extends Model
     }
 
     /**
+     * Scope for orders sent to kitchen (waiting for preparation).
+     */
+    public function scopeEnCuisine($query)
+    {
+        return $query->where('status', 'en_cuisine');
+    }
+
+    /**
      * Scope for orders in preparation.
      */
     public function scopeEnPreparation($query)
@@ -133,11 +153,68 @@ class Commande extends Model
     }
 
     /**
+     * Scope for orders ready (prêt).
+     */
+    public function scopePret($query)
+    {
+        return $query->where('status', 'pret');
+    }
+
+    /**
      * Scope for served orders.
      */
     public function scopeServi($query)
     {
         return $query->where('status', 'servi');
+    }
+
+    /**
+     * Scope for paid orders.
+     */
+    public function scopePayee($query)
+    {
+        return $query->where('status', 'payee');
+    }
+
+    /**
+     * Scope for orders pending payment (en_cuisine, en_preparation, pret, servi).
+     */
+    public function scopePendingPayment($query)
+    {
+        return $query->where('status', 'pret')
+                     ->where('type', 'kitchen');
+    }
+
+    /**
+     * Scope for orders ready for cashier (pret or servi).
+     */
+    public function scopeReadyForPayment($query)
+    {
+        return $query->whereIn('status', ['pret', 'servi']);
+    }
+
+    /**
+     * Scope by status.
+     */
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    /**
+     * Scope for today's commandes.
+     */
+    public function scopeToday($query)
+    {
+        return $query->whereDate('created_at', today());
+    }
+
+    /**
+     * Scope by table.
+     */
+    public function scopeByTable($query, $tableId)
+    {
+        return $query->where('table_id', $tableId);
     }
 
     /*
@@ -179,6 +256,14 @@ class Commande extends Model
     }
 
     /**
+     * Mark order as ready (prêt).
+     */
+    public function markPret(): void
+    {
+        $this->update(['status' => 'pret']);
+    }
+
+    /**
      * Mark order as served.
      */
     public function markServi(): void
@@ -187,11 +272,95 @@ class Commande extends Model
     }
 
     /**
+     * Mark order as paid.
+     */
+    public function markPayee(): void
+    {
+        $this->update(['status' => 'payee']);
+    }
+
+    /**
      * Check if this is a kitchen order.
      */
     public function isKitchenOrder(): bool
     {
         return $this->type === 'kitchen';
+    }
+
+    /**
+     * Alias for isKitchenOrder().
+     */
+    public function isKitchen(): bool
+    {
+        return $this->isKitchenOrder();
+    }
+
+    /**
+     * Check if order is ready.
+     */
+    public function isReady(): bool
+    {
+        return $this->status === 'pret';
+    }
+
+    /**
+     * Check if order is pending payment.
+     */
+    public function isPendingPayment(): bool
+    {
+        return in_array($this->status, ['en_cuisine', 'en_preparation', 'pret', 'servi']);
+    }
+
+    /**
+     * Check if order is paid.
+     */
+    public function isPaid(): bool
+    {
+        return $this->status === 'payee';
+    }
+
+    /**
+     * Check if order is ready for payment.
+     */
+    public function isReadyForPayment(): bool
+    {
+        return in_array($this->status, ['pret', 'servi']);
+    }
+
+    /**
+     * Get status label in French.
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return match($this->status) {
+            'pending' => 'En attente',
+            'received' => 'Reçue',
+            'en_cuisine' => 'En cuisine',
+            'en_preparation' => 'En préparation',
+            'pret' => 'Prêt',
+            'servi' => 'Servi',
+            'payee' => 'Payée',
+            'annule' => 'Annulée',
+            default => ucfirst($this->status),
+        };
+    }
+
+    /**
+     * Get status color for UI.
+     */
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            'pending' => 'yellow',
+            'received' => 'green',
+            'en_cuisine' => 'orange',
+            'en_preparation' => 'blue',
+            'pret' => 'emerald',
+            'servi' => 'cyan',
+            'payee' => 'green',
+            'annule' => 'red',
+            default => 'gray',
+        };
     }
 
     /**
