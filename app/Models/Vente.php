@@ -122,6 +122,14 @@ class Vente extends Model
         return $query->whereDate('created_at', today());
     }
 
+    /**
+     * Scope ventes by user.
+     */
+    public function scopeByUser($query, $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Helpers
@@ -134,6 +142,14 @@ class Vente extends Model
     public function isPaid(): bool
     {
         return $this->status === 'paid';
+    }
+
+    /**
+     * Check if vente is unpaid.
+     */
+    public function isUnpaid(): bool
+    {
+        return $this->status === 'unpaid';
     }
 
     /**

@@ -112,6 +112,49 @@ class Produit extends Model
         return $query->whereColumn('stock_quantity', '<=', 'alert_stock');
     }
 
+    /**
+     * Scope to produits in stock (quantity > 0).
+     */
+    public function scopeInStock($query)
+    {
+        return $query->where('stock_quantity', '>', 0);
+    }
+
+    /**
+     * Scope to produits out of stock.
+     */
+    public function scopeOutOfStock($query)
+    {
+        return $query->where('stock_quantity', '<=', 0);
+    }
+
+    /**
+     * Scope to search produits by name or description.
+     */
+    public function scopeSearch($query, string $term)
+    {
+        return $query->where(function ($q) use ($term) {
+            $q->where('name', 'like', "%{$term}%")
+              ->orWhere('description', 'like', "%{$term}%");
+        });
+    }
+
+    /**
+     * Scope by category.
+     */
+    public function scopeByCategory($query, int $categoryId)
+    {
+        return $query->where('category_id', $categoryId);
+    }
+
+    /**
+     * Scope for sellable products (active and in stock).
+     */
+    public function scopeSellable($query)
+    {
+        return $query->active()->inStock();
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Helpers

@@ -29,11 +29,6 @@ class Historique extends Model
         'table_name',
         'record_id',
         'description',
-        'ip_address',
-        'user_agent',
-        'old_values',
-        'new_values',
-        'device_type',
     ];
 
     /**

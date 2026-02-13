@@ -133,4 +133,49 @@ class AuthController extends Controller
 
         return redirect()->route('login');
     }
+
+    /**
+     * Show password change form.
+     */
+    public function showChangePassword()
+    {
+        return view('auth.change-password');
+    }
+
+    /**
+     * Handle password change.
+     */
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = Auth::user();
+
+        // Verify current password (skip if force_password_reset is true and it's a temp password)
+        if (!$user->force_password_reset && !Hash::check($request->current_password, $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => 'Le mot de passe actuel est incorrect.',
+            ]);
+        }
+
+        // Update password
+        $user->update([
+            'password' => Hash::make($request->password),
+            'force_password_reset' => false,
+        ]);
+
+        // Log the action
+        \App\Models\Historique::create([
+            'action' => 'password_changed',
+            'table_name' => 'users',
+            'record_id' => $user->id,
+            'user_id' => $user->id,
+            'description' => 'User changed their password',
+        ]);
+
+        return $this->redirectByRole($user)->with('success', 'Mot de passe changé avec succès.');
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\LogsHistorique;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -10,7 +11,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasApiTokens;
+    use HasFactory, Notifiable, HasApiTokens, LogsHistorique;
 
     /**
      * The attributes that are mass assignable.
@@ -23,6 +24,8 @@ class User extends Authenticatable
         'password',
         'role',
         'status',
+        'force_password_reset',
+        'last_login_at',
     ];
 
     /**
@@ -44,6 +47,8 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'force_password_reset' => 'boolean',
+            'last_login_at' => 'datetime',
         ];
     }
 
@@ -75,6 +80,68 @@ class User extends Authenticatable
     public function historiques(): HasMany
     {
         return $this->hasMany(Historique::class);
+    }
+
+    /**
+     * Get all permissions for this user.
+     */
+    public function permissions(): HasMany
+    {
+        return $this->hasMany(UserPermission::class);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Scopes
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Scope for active users only.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    /**
+     * Scope for blocked users only.
+     */
+    public function scopeBlocked($query)
+    {
+        return $query->where('status', 'blocked');
+    }
+
+    /**
+     * Scope by role.
+     */
+    public function scopeByRole($query, string $role)
+    {
+        return $query->where('role', $role);
+    }
+
+    /**
+     * Scope for admins only.
+     */
+    public function scopeAdmins($query)
+    {
+        return $query->where('role', 'admin');
+    }
+
+    /**
+     * Scope for staff (non-admin) only.
+     */
+    public function scopeStaff($query)
+    {
+        return $query->whereIn('role', ['caissier', 'serveur']);
+    }
+
+    /**
+     * Scope for users needing password reset.
+     */
+    public function scopeNeedsPasswordReset($query)
+    {
+        return $query->where('force_password_reset', true);
     }
 
     /*
@@ -113,5 +180,27 @@ class User extends Authenticatable
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    /**
+     * Check if user needs password reset.
+     */
+    public function needsPasswordReset(): bool
+    {
+        return $this->force_password_reset;
+    }
+
+    /**
+     * Log custom action in historique.
+     */
+    public function logCustomAction(string $action, string $description): void
+    {
+        Historique::create([
+            'user_id' => auth()->id() ?? $this->id,
+            'action' => $action,
+            'description' => $description,
+            'model_type' => self::class,
+            'model_id' => $this->id,
+        ]);
     }
 }

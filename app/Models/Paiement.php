@@ -25,8 +25,13 @@ class Paiement extends Model
      */
     protected $fillable = [
         'vente_id',
+        'commande_id',
         'amount',
         'method',
+        'reference',
+        'user_id',
+        'status',
+        'notes',
     ];
 
     /**
@@ -57,6 +62,22 @@ class Paiement extends Model
         return $this->belongsTo(Vente::class);
     }
 
+    /**
+     * Get the commande this paiement belongs to (for kitchen orders).
+     */
+    public function commande(): BelongsTo
+    {
+        return $this->belongsTo(Commande::class);
+    }
+
+    /**
+     * Get the user who processed this payment.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Scopes
@@ -77,6 +98,44 @@ class Paiement extends Model
     public function scopeToday($query)
     {
         return $query->whereDate('created_at', today());
+    }
+
+    /**
+     * Scope by status.
+     */
+    public function scopeByStatus($query, string $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    /**
+     * Scope for completed payments.
+     */
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'completed');
+    }
+
+    /**
+     * Scope for commande payments.
+     */
+    public function scopeForCommande($query, $commandeId = null)
+    {
+        if ($commandeId) {
+            return $query->where('commande_id', $commandeId);
+        }
+        return $query->whereNotNull('commande_id');
+    }
+
+    /**
+     * Scope for vente payments.
+     */
+    public function scopeForVente($query, $venteId = null)
+    {
+        if ($venteId) {
+            return $query->where('vente_id', $venteId);
+        }
+        return $query->whereNotNull('vente_id');
     }
 
     /*

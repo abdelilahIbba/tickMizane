@@ -1,0 +1,8 @@
+# Integration Tests
+
+Tests in this directory test component interactions:
+- Services with database
+- Multi-step processes
+- External API integrations
+
+Sprint 2+ will populate this directory with stock management integration tests.

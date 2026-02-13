@@ -61,24 +61,27 @@
     
     @stack('styles')
 </head>
-<body class="h-full bg-gray-950 text-gray-100 antialiased overflow-hidden">
-    <div class="h-full flex flex-col">
-        {{-- Include Navbar --}}
-        <x-layout.navbar />
+<body class="h-full bg-gray-950 text-gray-100 antialiased overflow-hidden" x-data="{ sidebarOpen: false }">
+    <div class="h-full flex flex-col md:flex-row">
+        {{-- Include Sidebar --}}
+        <x-layout.sidebar />
         
-        {{-- Main Content --}}
-        <main class="flex-1 overflow-y-auto">
-            {{ $slot }}
-        </main>
-        
-        {{-- Footer --}}
-        <footer class="bg-gray-900 border-t border-gray-800 py-4">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <p class="text-center text-sm text-gray-500">
-                    © {{ date('Y') }} Techmizane Cash. Tous droits réservés.
-                </p>
-            </div>
-        </footer>
+        {{-- Main Content Area --}}
+        <div class="flex-1 flex flex-col min-w-0 md:ml-0 overflow-hidden">
+            {{-- Main Content --}}
+            <main class="flex-1 overflow-y-auto w-full">
+                {{ $slot }}
+            </main>
+            
+            {{-- Footer --}}
+            <footer class="bg-gray-900 border-t border-gray-800 py-3 flex-shrink-0">
+                <div class="px-4 sm:px-6 lg:px-8">
+                    <p class="text-center text-sm text-gray-500">
+                        © {{ date('Y') }} Techmizane Cash. Tous droits réservés.
+                    </p>
+                </div>
+            </footer>
+        </div>
     </div>
     
     {{-- Global Notifications --}}
