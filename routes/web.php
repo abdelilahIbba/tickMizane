@@ -22,6 +22,7 @@ use App\Http\Controllers\Settings\UserManagementController;
 use App\Http\Controllers\Settings\PermissionManagementController;
 use App\Http\Controllers\Settings\SystemSettingsController;
 use App\Http\Controllers\Settings\DocumentationController;
+use App\Http\Controllers\MenuController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,6 +32,8 @@ use App\Http\Controllers\Settings\DocumentationController;
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
+Route::get('/menu/tv', [MenuController::class, 'tv'])->name('menu.tv');
 
 /*
 |--------------------------------------------------------------------------

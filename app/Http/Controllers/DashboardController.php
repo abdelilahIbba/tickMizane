@@ -211,9 +211,8 @@ class DashboardController extends Controller
         
         $methodNames = [
             'cash' => 'Espèces',
-            'card' => 'Carte',
-            'transfer' => 'Virement',
-            'check' => 'Chèque'
+            'carte' => 'Carte de crédit',
+            'mixte' => 'Mixte'
         ];
         
         foreach ($methods as $method) {

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Produit extends Model
 {
@@ -27,6 +28,7 @@ class Produit extends Model
     protected $fillable = [
         'category_id',
         'name',
+        'image',
         'price_vente',
         'price_achat',
         'stock_quantity',
@@ -174,7 +176,7 @@ class Produit extends Model
      */
     public function decrementStock(int $quantity): void
     {
-        $this->decrement('stock_quantity', $quantity);
+        $this->decrement('stock_quantity', $quantity, []);
     }
 
     /**
@@ -182,6 +184,50 @@ class Produit extends Model
      */
     public function incrementStock(int $quantity): void
     {
-        $this->increment('stock_quantity', $quantity);
+        $this->increment('stock_quantity', $quantity, []);
+    }
+
+    /**
+     * Get normalized image URL (external URL or local storage asset).
+     */
+    public function getImageUrlAttribute(): ?string
+    {
+        if (empty($this->image)) {
+            return null;
+        }
+
+        if (Str::startsWith($this->image, ['http://', 'https://'])) {
+            return $this->image;
+        }
+
+        return asset('storage/' . ltrim($this->image, '/'));
+    }
+
+    /**
+     * Get a stable display image URL with locked real-photo fallbacks.
+     */
+    public function getDisplayImageUrlAttribute(): string
+    {
+        $current = $this->image_url;
+
+        if (!empty($current) && !Str::contains($current, 'source.unsplash.com')) {
+            return $current;
+        }
+
+        $fallbacks = [
+            Str::lower('Eau minérale 1.5L') => 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=640&q=80',
+            Str::lower('Coca-Cola 33cl') => 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=640&q=80',
+            Str::lower('Café') => 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&q=80',
+            Str::lower('Chips Lays 150g') => 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?auto=format&fit=crop&w=640&q=80',
+            Str::lower('Pain de mie') => 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=640&q=80',
+            Str::lower('Lait 1L') => 'https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=640&q=80',
+        ];
+
+        $key = Str::lower(trim((string) $this->name));
+        if (isset($fallbacks[$key])) {
+            return $fallbacks[$key];
+        }
+
+        return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=640&q=80';
     }
 }
