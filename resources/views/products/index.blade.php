@@ -62,11 +62,12 @@
                     <tr class="hover:bg-gray-700/50 transition-colors">
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
-                                <div class="w-12 h-12 bg-gray-700 rounded-xl flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                    </svg>
-                                </div>
+                                <img
+                                    src="{{ $product->display_image_url }}"
+                                    alt="{{ $product->name }}"
+                                    class="w-12 h-12 object-cover rounded-xl border border-gray-700"
+                                    onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=120&q=80'"
+                                >
                                 <div>
                                     <p class="text-white font-medium">{{ $product->name }}</p>
                                     <p class="text-gray-500 text-sm">#{{ str_pad($product->id, 4, '0', STR_PAD_LEFT) }}</p>

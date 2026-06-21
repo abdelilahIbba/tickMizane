@@ -61,7 +61,7 @@
     </div>
 
     <!-- Quick Links -->
-    <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
         <a href="{{ route('settings.users.index') }}" class="flex items-center gap-4 p-4 bg-gray-900/30 rounded-lg border border-gray-800 hover:border-purple-500 transition-colors">
             <div class="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center">
                 <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,6 +82,17 @@
             <div>
                 <h4 class="text-white font-medium">Gestion des Permissions</h4>
                 <p class="text-sm text-gray-400">Contrôler les droits d'accès</p>
+            </div>
+        </a>
+        <a href="{{ route('menu.tv') }}" target="_blank" class="flex items-center gap-4 p-4 bg-gray-900/30 rounded-lg border border-gray-800 hover:border-amber-500 transition-colors">
+            <div class="w-10 h-10 bg-amber-600/20 rounded-lg flex items-center justify-center">
+                <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+            </div>
+            <div>
+                <h4 class="text-white font-medium">Menu (Écran TV)</h4>
+                <p class="text-sm text-gray-400">Affichage public du menu</p>
             </div>
         </a>
     </div>

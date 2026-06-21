@@ -6,6 +6,7 @@ use App\Models\Produit;
 use App\Models\Category;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -73,11 +74,20 @@ class ProductController extends Controller
             'alert_stock' => 'nullable|integer|min:0',
             'unit' => 'nullable|in:pcs,kg,l',
             'status' => 'nullable|in:active,inactive',
+            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image_url' => 'nullable|url|max:2048',
         ]);
 
         $validated['alert_stock'] = $validated['alert_stock'] ?? 10;
         $validated['status'] = $validated['status'] ?? 'active';
         $validated['unit'] = $validated['unit'] ?? 'pcs';
+
+        $image = $this->resolveImageInput($request, 'products');
+        if ($image !== null) {
+            $validated['image'] = $image;
+        }
+
+        unset($validated['image_file'], $validated['image_url']);
 
         $produit = Produit::create($validated);
 
@@ -130,7 +140,17 @@ class ProductController extends Controller
             'alert_stock' => 'nullable|integer|min:0',
             'unit' => 'nullable|in:pcs,kg,l',
             'status' => 'nullable|in:active,inactive',
+            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image_url' => 'nullable|url|max:2048',
         ]);
+
+        $newImage = $this->resolveImageInput($request, 'products');
+        if ($newImage !== null) {
+            $this->deleteLocalImageIfExists($product->image);
+            $validated['image'] = $newImage;
+        }
+
+        unset($validated['image_file'], $validated['image_url']);
 
         $product->update($validated);
 
@@ -153,6 +173,7 @@ class ProductController extends Controller
 
         // Delete stock movements
         $product->stockMovements()->delete();
+        $this->deleteLocalImageIfExists($product->image);
         $product->delete();
 
         return redirect()
@@ -192,5 +213,39 @@ class ProductController extends Controller
         $product->update(['stock_quantity' => $stockApres]);
 
         return back()->with('success', 'Stock mis à jour avec succès.');
+    }
+
+    /**
+     * Resolve image from upload or URL input.
+     */
+    private function resolveImageInput(Request $request, string $folder): ?string
+    {
+        if ($request->hasFile('image_file')) {
+            return $request->file('image_file')->store($folder, 'public');
+        }
+
+        if ($request->filled('image_url')) {
+            return trim((string) $request->input('image_url'));
+        }
+
+        return null;
+    }
+
+    /**
+     * Delete local storage image if present.
+     */
+    private function deleteLocalImageIfExists(?string $path): void
+    {
+        if (!$path) {
+            return;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return;
+        }
+
+        if (Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
     }
 }

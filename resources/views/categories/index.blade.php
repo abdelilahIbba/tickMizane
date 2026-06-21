@@ -43,11 +43,14 @@
         
         {{-- Categories Table --}}
         <x-ui.card :padding="false">
-            <x-ui.table :headers="['ID', 'Nom', 'Description', 'Statut', 'Produits', 'Actions']">
+            <x-ui.table :headers="['ID', 'Nom', 'Image', 'Description', 'Statut', 'Produits', 'Actions']">
                 @forelse($categories as $category)
                     <tr class="hover:bg-gray-700/50 transition-colors">
                         <td class="px-6 py-4 text-gray-300">#{{ $category->id }}</td>
                         <td class="px-6 py-4 text-white font-medium">{{ $category->name }}</td>
+                        <td class="px-6 py-4">
+                            <img src="{{ $category->display_image_url }}" alt="{{ $category->name }}" class="w-12 h-12 object-cover rounded-lg border border-gray-700" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=120&q=80'">
+                        </td>
                         <td class="px-6 py-4 text-gray-400">{{ $category->description ?? '-' }}</td>
                         <td class="px-6 py-4">
                             @if($category->status === 'active')
@@ -78,7 +81,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center text-gray-400">
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-400">
                             <svg class="w-12 h-12 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
                             </svg>

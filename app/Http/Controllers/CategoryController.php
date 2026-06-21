@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class CategoryController extends Controller
 {
@@ -48,9 +49,18 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255|unique:categories,name',
             'description' => 'nullable|string|max:500',
             'status' => 'nullable|in:active,archived',
+            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image_url' => 'nullable|url|max:2048',
         ]);
 
         $validated['status'] = $validated['status'] ?? 'active';
+
+        $image = $this->resolveImageInput($request, 'categories');
+        if ($image !== null) {
+            $validated['image'] = $image;
+        }
+
+        unset($validated['image_file'], $validated['image_url']);
 
         Category::create($validated);
 
@@ -88,7 +98,17 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
             'description' => 'nullable|string|max:500',
             'status' => 'nullable|in:active,archived',
+            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image_url' => 'nullable|url|max:2048',
         ]);
+
+        $newImage = $this->resolveImageInput($request, 'categories');
+        if ($newImage !== null) {
+            $this->deleteLocalImageIfExists($category->image);
+            $validated['image'] = $newImage;
+        }
+
+        unset($validated['image_file'], $validated['image_url']);
 
         $category->update($validated);
 
@@ -109,6 +129,7 @@ class CategoryController extends Controller
                 ->with('error', 'Impossible de supprimer cette catégorie car elle contient des produits.');
         }
 
+        $this->deleteLocalImageIfExists($category->image);
         $category->delete();
 
         return redirect()
@@ -127,5 +148,39 @@ class CategoryController extends Controller
         return redirect()
             ->route('categories.index')
             ->with('success', 'Statut de la catégorie mis à jour.');
+    }
+
+    /**
+     * Resolve image from upload or URL input.
+     */
+    private function resolveImageInput(Request $request, string $folder): ?string
+    {
+        if ($request->hasFile('image_file')) {
+            return $request->file('image_file')->store($folder, 'public');
+        }
+
+        if ($request->filled('image_url')) {
+            return trim((string) $request->input('image_url'));
+        }
+
+        return null;
+    }
+
+    /**
+     * Delete local storage image if present.
+     */
+    private function deleteLocalImageIfExists(?string $path): void
+    {
+        if (!$path) {
+            return;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return;
+        }
+
+        if (Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
     }
 }

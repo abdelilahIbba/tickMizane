@@ -20,7 +20,7 @@
                 </x-ui.alert>
             @endif
             
-            <form action="{{ route('products.update', $product ?? 1) }}" method="POST" class="space-y-6">
+            <form action="{{ route('products.update', $product ?? 1) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
                 @csrf
                 @method('PUT')
                 
@@ -93,6 +93,25 @@
                     :options="['active' => 'Actif', 'inactive' => 'Inactif']"
                     selected="{{ $product->status ?? 'active' }}"
                 />
+
+                <x-form.input
+                    type="url"
+                    name="image_url"
+                    label="URL de l'image (optionnel)"
+                    placeholder="https://..."
+                    :value="old('image_url', \Illuminate\Support\Str::startsWith((string) ($product->image ?? ''), ['http://', 'https://']) ? $product->image : '')"
+                />
+
+                <div class="mb-4">
+                    <label for="image_file" class="block text-sm font-medium text-gray-400 mb-1">Image du produit</label>
+                    @if(isset($product) && $product->image_url)
+                        <div class="mb-3">
+                            <img src="{{ $product->image_url }}" alt="Image du produit" class="h-20 w-20 object-cover rounded-lg border border-gray-700">
+                        </div>
+                    @endif
+                    <input type="file" name="image_file" id="image_file" accept="image/*" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500 text-sm">
+                    <p class="text-xs text-gray-500 mt-2">Vous pouvez uploader un nouveau fichier local ou remplacer via URL.</p>
+                </div>
                 
                 <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-700">
                     <x-ui.button variant="secondary" href="{{ route('products.index') }}">

@@ -4,39 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'Connexion' }} - Techmizane Cash</title>
+    <title>{{ $title ?? 'Connexion' }} - TechMizane Cash</title>
     
-    {{-- Tailwind CSS via CDN --}}
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Instrument Sans', 'sans-serif'],
-                    },
-                    colors: {
-                        amber: {
-                            400: '#fbbf24',
-                            500: '#f59e0b',
-                            600: '#d97706',
-                        }
-                    },
-                    animation: {
-                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    }
-                }
-            }
-        }
-    </script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     {{-- Google Fonts --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    {{-- Alpine.js --}}
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
     <style>
         [x-cloak] { display: none !important; }
@@ -53,7 +28,7 @@
         }
     </style>
 </head>
-<body class="h-full bg-black text-white antialiased overflow-hidden">
+<body class="h-full bg-gray-950 text-white antialiased overflow-hidden">
 
     <div class="h-full w-full flex" x-data="{ 
         loading: false, 
@@ -62,14 +37,10 @@
     }">
         
         <!-- Left Section: Visual & Brand (Hidden on mobile, 45% width on desktop) -->
-        <div class="hidden lg:flex lg:w-[45%] bg-[#050505] relative flex-col justify-between p-12 overflow-hidden border-r border-gray-900">
-            <!-- Background Decorative Elements -->
-            <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-                <div class="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-amber-500/5 rounded-full blur-[120px] animate-pulse-slow"></div>
-                <div class="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-600/5 rounded-full blur-[100px]"></div>
-                <!-- Grid Pattern -->
-                <div class="absolute inset-0 opacity-[0.03]" style="background-image: linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px); background-size: 40px 40px;"></div>
-            </div>
+        <div class="hidden lg:flex lg:w-[45%] relative flex-col justify-between p-12 overflow-hidden border-r border-gray-800 shadow-2xl bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');">
+            <!-- Overlay to make text readable -->
+            <div class="absolute inset-0 bg-gradient-to-b from-gray-900/90 via-gray-900/70 to-gray-950/95 z-0"></div>
+            <div class="absolute inset-0 bg-amber-900/10 mix-blend-overlay z-0"></div>
 
             <!-- Header Brand -->
             <div class="relative z-10">
@@ -84,47 +55,45 @@
                             </linearGradient>
                         </defs>
                     </svg>
-                    <span class="text-xl font-bold tracking-tight text-white/90">Techmizane</span>
+                    <span class="text-xl font-bold tracking-tight text-white drop-shadow-md">TechMizane</span>
                 </div>
             </div>
 
-            <!-- Central Visual / 3D Composition Placeholder -->
+            <!-- Central Visual -->
             <div class="relative z-10 flex-1 flex flex-col justify-center">
-                <h1 class="text-5xl font-bold leading-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-gray-500">
-                    Gestion future <br>
-                    <span class="text-amber-500">Intelligente.</span>
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 backdrop-blur-md w-fit mb-6 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.8)]"></span>
+                    <span class="text-xs font-semibold text-amber-100 tracking-wide uppercase">Nouveau Design</span>
+                </div>
+
+                <h1 class="text-5xl font-bold leading-tight mb-6 text-white drop-shadow-lg">
+                    L'excellence au <br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-500">Service du goût.</span>
                 </h1>
-                <p class="text-gray-400 text-lg max-w-md leading-relaxed">
-                    Plateforme de gestion centralisée nouvelle génération. 
-                    Optimisez votre flux de travail restaurant avec une précision absolue.
+                <p class="text-gray-200 text-lg max-w-md leading-relaxed font-medium drop-shadow-md">
+                    Plateforme de gestion centralisée pour une expérience culinaire fluide.
+                    Maitrisez vos commandes, vos stocks et votre personnel en temps réel.
                 </p>
                 
                 <div class="mt-12 flex gap-4">
-                    <div class="glass-panel p-4 rounded-xl flex items-center gap-3">
-                        <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <div class="glass-panel bg-white/10 border-white/20 p-4 rounded-xl flex items-center gap-3 backdrop-blur-md shadow-lg">
+                        <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>
                         <div>
-                            <div class="text-xs text-gray-500 uppercase tracking-wider">Système</div>
-                            <div class="text-sm font-medium text-emerald-400">Opérationnel</div>
-                        </div>
-                    </div>
-                    <div class="glass-panel p-4 rounded-xl flex items-center gap-3">
-                        <div class="w-2 h-2 rounded-full bg-amber-500"></div>
-                        <div>
-                            <div class="text-xs text-gray-500 uppercase tracking-wider">Version</div>
-                            <div class="text-sm font-medium text-gray-300">v2.4.0-2026</div>
+                            <div class="text-xs text-gray-300 uppercase tracking-wider font-semibold">Système</div>
+                            <div class="text-sm font-bold text-emerald-400 drop-shadow-sm">Opérationnel</div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Footer Copyright -->
-            <div class="relative z-10 text-xs text-gray-600">
-                &copy; {{ date('Y') }} Techmizane Solutions. All rights reserved.
+            <div class="relative z-10 text-xs text-gray-400 font-medium">
+                &copy; {{ date('Y') }} TechMizane Solutions. All rights reserved.
             </div>
         </div>
 
         <!-- Right Section: Login Form (100% on mobile, 55% on desktop) -->
-        <div class="w-full lg:w-[55%] bg-black relative flex flex-col justify-center px-8 sm:px-16 xl:px-32">
+        <div class="w-full lg:w-[55%] bg-gray-950 relative flex flex-col justify-center px-8 sm:px-16 xl:px-32">
             
             <!-- Mobile Brand (Visible only small screens) -->
             <div class="lg:hidden absolute top-8 left-8">
@@ -337,7 +306,7 @@
             </div>
             
             <!-- Bottom decorative line -->
-            <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-black via-amber-900/20 to-black"></div>
+            <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-gray-950 via-amber-900/30 to-gray-950"></div>
         </div>
     </div>
 </body>

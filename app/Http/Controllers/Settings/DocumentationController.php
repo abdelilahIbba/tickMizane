@@ -27,24 +27,10 @@ class DocumentationController extends Controller
      */
     public function updateVisibility(Request $request, Documentation $documentation)
     {
-        // Validate that visible_to_roles is an array of strings
-        $validated = $request->validate([
-            'visible_to_roles' => 'array',
-            'visible_to_roles.*' => 'string|in:admin,caissier,serveur',
-        ]);
-
-        $documentation->update([
-            'visible_to_roles' => $validated['visible_to_roles'] ?? []
-        ]);
-
-        return back()->with('success', 'Visibilité mise à jour pour ' . $documentation->title);
-    }
-}
         // Example input: visible_to_roles = ['admin', 'caissier'] or null for all
-        
         $validated = $request->validate([
             'visible_to_roles' => 'nullable|array',
-            'visible_to_roles.*' => 'in:admin,caissier,serveur,cuisinier',
+            'visible_to_roles.*' => 'in:admin,caissier,serveur',
             'is_global' => 'boolean' // Checkbox for "Visible to Everyone"
         ]);
 
@@ -54,6 +40,6 @@ class DocumentationController extends Controller
             $documentation->update(['visible_to_roles' => $validated['visible_to_roles'] ?? []]);
         }
 
-        return back()->with('success', 'Visibilité mise à jour.');
+        return back()->with('success', 'Visibilité mise à jour pour ' . $documentation->title);
     }
 }
