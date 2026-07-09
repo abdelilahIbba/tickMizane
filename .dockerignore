@@ -1,0 +1,51 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# IDE / editor
+.idea
+.vscode
+.nova
+*.swp
+*.swo
+
+# OS artefacts
+.DS_Store
+Thumbs.db
+
+# Node (built by the frontend stage inside Docker)
+node_modules
+
+# Laravel dev artefacts
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/.phpunit.cache
+.phpunit.result.cache
+
+# Sensitive / local env files
+.env
+.env.backup
+.env.production
+.env.docker
+
+# Docker compose files (not needed inside the image)
+docker-compose*.yml
+
+# Docs / markdown
+*.md
+BACKEND_ANALYSIS_REPORT.md
+DATABASE_LAYER_ANALYSIS.md
+GUIDE_CLIENT_POS_TECHMIZANE_AR.md
+TESTING_ROADMAP.md
+WAITER_KITCHEN_IMPLEMENTATION.md
+SETTINGS_MODULE_REPORT.md
+
+# Tests (not needed in the image)
+tests/
+phpunit.xml
+
+# CI / scripts
+setup-waiter-kitchen.ps1

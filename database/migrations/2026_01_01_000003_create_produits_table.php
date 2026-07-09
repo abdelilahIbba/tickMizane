@@ -19,7 +19,7 @@ return new class extends Migration
             $table->decimal('price_achat', 10, 2)->nullable();
             $table->integer('stock_quantity')->default(0);
             $table->integer('alert_stock')->default(10);
-            $table->enum('unit', ['pcs', 'kg', 'l'])->default('pcs');
+            $table->enum('unit', ['pcs', 'kg', 'l', 'portion', 'bol', 'verre', 'tasse', 'bouteille', 'théière', 'pièce', 'plateau'])->default('pcs');
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
             

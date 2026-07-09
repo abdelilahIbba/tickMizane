@@ -19,10 +19,16 @@ class DashboardStatsSeeder extends Seeder
     public function run(): void
     {
         // Nettoyer les données existantes avant de générer
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-        VenteDetail::truncate();
-        Vente::truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        if (DB::getDriverName() === 'pgsql') {
+            // Delete in FK-safe order; avoids CASCADE wiping unrelated tables
+            DB::table('vente_details')->delete();
+            DB::table('ventes')->delete();
+        } else {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            VenteDetail::truncate();
+            Vente::truncate();
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        }
 
         $caissiers = User::whereIn('role', ['caissier', 'admin'])->pluck('id');
         $tables = Table::pluck('id');
