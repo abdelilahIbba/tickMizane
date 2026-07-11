@@ -30,11 +30,32 @@
 </head>
 <body class="h-full bg-gray-950 text-white antialiased overflow-hidden">
 
-    <div class="h-full w-full flex" x-data="{ 
-        loading: false, 
+    <div class="h-full w-full flex" x-data="{
+        loading: false,
         loginMode: 'admin',
-        focusField: '' 
-    }">
+        focusField: '',
+        pin: '',
+        appendDigit(digit) {
+            if (this.pin.length >= 10) return;
+            this.pin += String(digit);
+        },
+        backspacePin() {
+            this.pin = this.pin.slice(0, -1);
+        },
+        clearPin() {
+            this.pin = '';
+        },
+        maskedPin() {
+            return this.pin.length ? '●'.repeat(this.pin.length) : '••••';
+        }
+    }"
+    @keydown.window="
+        if (loginMode !== 'admin') return;
+        if ($event.key >= '0' && $event.key <= '9') { appendDigit($event.key); $event.preventDefault(); }
+        else if ($event.key === 'Backspace') { backspacePin(); $event.preventDefault(); }
+        else if ($event.key === 'Delete') { clearPin(); $event.preventDefault(); }
+        else if ($event.key === 'Enter' && pin.length > 0 && !loading) { $refs.adminSubmit.click(); }
+    ">
         
         <!-- Left Section: Visual & Brand (Hidden on mobile, 45% width on desktop) -->
         <div class="hidden lg:flex lg:w-[45%] relative flex-col justify-between p-12 overflow-hidden border-r border-gray-800 shadow-2xl bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');">
@@ -164,7 +185,7 @@
                 @endif
 
                 <!-- Form Area -->
-                <div class="relative h-[320px]"> <!-- Fixed height container for stability -->
+                <div class="relative min-h-[460px] lg:min-h-[500px]">
                     
                     <!-- ADMIN FORM -->
                     <form 
@@ -178,39 +199,57 @@
                         method="POST" 
                         action="{{ route('login.submit') }}" 
                         @submit="loading = true"
-                        class="absolute inset-0"
+                        class="w-full"
                     >
                         @csrf
                         <input type="hidden" name="login_mode" value="admin">
                         
-                        <div class="space-y-8">
+                        <div class="space-y-6">
                             <div class="group">
-                                <label class="block text-xs font-medium text-gray-500 uppercase tracking-widest mb-3">Code d'accès</label>
+                                <label class="block text-xs font-medium text-gray-500 uppercase tracking-widest mb-3">Code d'accès (PIN)</label>
                                 <div class="relative group-focus-within:text-amber-500 transition-colors duration-300">
                                     <input
-                                        type="password"
-                                        name="password"
-                                        required
-                                        autofocus
-                                        maxlength="10"
+                                        type="text"
+                                        x-bind:value="maskedPin()"
+                                        readonly
+                                        inputmode="numeric"
+                                        autocomplete="off"
                                         placeholder="••••"
-                                        class="w-full bg-transparent border-b-2 border-gray-800 text-4xl font-light text-white pb-3 placeholder-gray-800
+                                             class="w-full bg-transparent border-b-2 border-gray-800 text-3xl lg:text-4xl font-light text-white pb-3 placeholder-gray-800
                                                focus:outline-none focus:border-amber-500 focus:placeholder-gray-700
-                                               transition-all duration-300 tracking-[1em]"
+                                                 transition-all duration-300 tracking-[0.45em]"
                                     >
+                                    <input type="hidden" name="password" x-bind:value="pin">
                                     <div class="absolute right-0 top-0 h-full flex items-center">
                                         <svg class="w-6 h-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                         </svg>
                                     </div>
                                 </div>
-                                <p class="mt-4 text-sm text-gray-600">Saisissez votre code PIN administrateur sécurisé.</p>
+                                <p class="mt-4 text-sm text-gray-600">Utilisez le pavé numérique tactile pour saisir votre code PIN.</p>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-3" role="group" aria-label="Pavé numérique">
+                                <button type="button" @click="appendDigit(1)" class="h-14 rounded-xl bg-gray-900 border border-gray-800 text-xl font-semibold text-white hover:bg-gray-800 active:scale-95 transition">1</button>
+                                <button type="button" @click="appendDigit(2)" class="h-14 rounded-xl bg-gray-900 border border-gray-800 text-xl font-semibold text-white hover:bg-gray-800 active:scale-95 transition">2</button>
+                                <button type="button" @click="appendDigit(3)" class="h-14 rounded-xl bg-gray-900 border border-gray-800 text-xl font-semibold text-white hover:bg-gray-800 active:scale-95 transition">3</button>
+                                <button type="button" @click="appendDigit(4)" class="h-14 rounded-xl bg-gray-900 border border-gray-800 text-xl font-semibold text-white hover:bg-gray-800 active:scale-95 transition">4</button>
+                                <button type="button" @click="appendDigit(5)" class="h-14 rounded-xl bg-gray-900 border border-gray-800 text-xl font-semibold text-white hover:bg-gray-800 active:scale-95 transition">5</button>
+                                <button type="button" @click="appendDigit(6)" class="h-14 rounded-xl bg-gray-900 border border-gray-800 text-xl font-semibold text-white hover:bg-gray-800 active:scale-95 transition">6</button>
+                                <button type="button" @click="appendDigit(7)" class="h-14 rounded-xl bg-gray-900 border border-gray-800 text-xl font-semibold text-white hover:bg-gray-800 active:scale-95 transition">7</button>
+                                <button type="button" @click="appendDigit(8)" class="h-14 rounded-xl bg-gray-900 border border-gray-800 text-xl font-semibold text-white hover:bg-gray-800 active:scale-95 transition">8</button>
+                                <button type="button" @click="appendDigit(9)" class="h-14 rounded-xl bg-gray-900 border border-gray-800 text-xl font-semibold text-white hover:bg-gray-800 active:scale-95 transition">9</button>
+                                <button type="button" @click="clearPin()" class="h-14 rounded-xl bg-red-500/10 border border-red-500/30 text-sm font-semibold text-red-400 hover:bg-red-500/20 active:scale-95 transition">Effacer</button>
+                                <button type="button" @click="appendDigit(0)" class="h-14 rounded-xl bg-gray-900 border border-gray-800 text-xl font-semibold text-white hover:bg-gray-800 active:scale-95 transition">0</button>
+                                <button type="button" @click="backspacePin()" class="h-14 rounded-xl bg-gray-900 border border-gray-800 text-sm font-semibold text-gray-300 hover:bg-gray-800 active:scale-95 transition">Suppr</button>
                             </div>
 
                             <button 
                                 type="submit" 
+                                x-ref="adminSubmit"
                                 class="group relative w-full flex justify-center py-4 px-4 border border-transparent text-sm font-medium rounded-xl text-black bg-white hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all duration-300 overflow-hidden"
-                                :disabled="loading"
+                                x-bind:disabled="loading || pin.length === 0"
+                                x-bind:class="(loading || pin.length === 0) ? 'opacity-50 cursor-not-allowed hover:bg-white' : ''"
                             >
                                 <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-amber-400 to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                 <span class="relative flex items-center gap-2" x-show="!loading">
@@ -241,7 +280,7 @@
                         method="POST" 
                         action="{{ route('login.submit') }}" 
                         @submit="loading = true"
-                        class="absolute inset-0"
+                        class="w-full"
                         x-cloak
                     >
                         @csrf
@@ -300,7 +339,7 @@
                 </div>
 
                 <!-- Footer Links -->
-                <div class="mt-8 pt-8 border-t border-gray-900 flex justify-between items-center text-xs text-gray-600">
+                <div class="mt-6 pt-6 border-t border-gray-900 flex justify-between items-center text-xs text-gray-600">
                     <a href="#" class="hover:text-amber-500 transition-colors">Besoin d'aide ?</a>
                 </div>
             </div>

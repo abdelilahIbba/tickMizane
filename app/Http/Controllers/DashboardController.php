@@ -6,9 +6,9 @@ use App\Models\Vente;
 use App\Models\VenteDetail;
 use App\Models\Produit;
 use App\Models\Commande;
-use App\Models\Category;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
@@ -17,62 +17,46 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        // Today's sales stats
-        $todaySales = Vente::today()->paid()->sum('total');
-        $todayTransactions = Vente::today()->paid()->count();
-        
-        // Low stock products
-        $lowStockProducts = Produit::active()->lowStock()->count();
-        
-        // Pending supplier orders
-        $pendingOrders = Commande::pending()->count();
-        
-        // Recent sales
-        $recentSales = Vente::with('user')
-            ->latest()
-            ->take(5)
-            ->get();
-        
-        // Low stock products list
-        $lowStockList = Produit::active()
-            ->lowStock()
-            ->take(5)
-            ->get();
-        
-        // ===== CHART DATA =====
-        
-        // Weekly sales (last 7 days)
-        $weeklySales = $this->getWeeklySales();
-        
-        // Monthly revenue (last 6 months)
-        $monthlyRevenue = $this->getMonthlyRevenue();
-        
-        // Top selling products
-        $topProducts = $this->getTopProducts();
-        
-        // Sales by category
-        $salesByCategory = $this->getSalesByCategory();
-        
-        // Payment methods distribution
-        $paymentMethods = $this->getPaymentMethodsDistribution();
-        
-        // Hourly sales today
-        $hourlySales = $this->getHourlySales();
-        
-        return view('dashboard.index', compact(
-            'todaySales',
-            'todayTransactions',
-            'lowStockProducts',
-            'pendingOrders',
-            'recentSales',
-            'lowStockList',
-            'weeklySales',
-            'monthlyRevenue',
-            'topProducts',
-            'salesByCategory',
-            'paymentMethods',
-            'hourlySales'
-        ));
+        $dashboardData = Cache::remember('dashboard:admin:v1', now()->addSeconds(30), function () {
+            // Today's sales stats
+            $todaySales = Vente::today()->paid()->sum('total');
+            $todayTransactions = Vente::today()->paid()->count();
+
+            // Low stock products
+            $lowStockProducts = Produit::active()->lowStock()->count();
+
+            // Pending supplier orders
+            $pendingOrders = Commande::pending()->count();
+
+            // Recent sales
+            $recentSales = Vente::with('user')
+                ->latest()
+                ->take(5)
+                ->get();
+
+            // Low stock products list
+            $lowStockList = Produit::active()
+                ->lowStock()
+                ->take(5)
+                ->get();
+
+            return [
+                'todaySales' => $todaySales,
+                'todayTransactions' => $todayTransactions,
+                'lowStockProducts' => $lowStockProducts,
+                'pendingOrders' => $pendingOrders,
+                'recentSales' => $recentSales,
+                'lowStockList' => $lowStockList,
+                'weeklySales' => $this->getWeeklySales(),
+                'monthlyRevenue' => $this->getMonthlyRevenue(),
+                'topProducts' => $this->getTopProducts(),
+                'salesByCategory' => $this->getSalesByCategory(),
+                'paymentMethods' => $this->getPaymentMethodsDistribution(),
+                'hourlySales' => $this->getHourlySales(),
+            ];
+        });
+
+        return view('dashboard.index', $dashboardData);
     }
     
     /**
@@ -80,25 +64,32 @@ class DashboardController extends Controller
      */
     private function getWeeklySales(): array
     {
+        $today = Carbon::today();
+        $startDate = (clone $today)->subDays(6);
+
+        $rows = Vente::selectRaw('DATE(created_at) as sale_date, SUM(total) as total_sales, COUNT(*) as tx_count')
+            ->where('status', 'paid')
+            ->whereDate('created_at', '>=', $startDate->toDateString())
+            ->whereDate('created_at', '<=', $today->toDateString())
+            ->groupBy('sale_date')
+            ->get()
+            ->keyBy(fn ($row) => Carbon::parse($row->sale_date)->toDateString());
+
         $labels = [];
         $data = [];
         $transactions = [];
-        
+
         for ($i = 6; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i);
+            $date = (clone $today)->subDays($i);
+            $dateKey = $date->toDateString();
+            $dailyRow = $rows->get($dateKey);
+
             $labels[] = $date->translatedFormat('D');
-            
-            $dayTotal = Vente::whereDate('created_at', $date->toDateString())
-                ->where('status', 'paid')
-                ->sum('total');
-            $data[] = round($dayTotal, 2);
-            
-            $dayTransactions = Vente::whereDate('created_at', $date->toDateString())
-                ->where('status', 'paid')
-                ->count();
-            $transactions[] = $dayTransactions;
+
+            $data[] = round((float) ($dailyRow->total_sales ?? 0), 2);
+            $transactions[] = (int) ($dailyRow->tx_count ?? 0);
         }
-        
+
         return [
             'labels' => $labels,
             'sales' => $data,
@@ -111,20 +102,28 @@ class DashboardController extends Controller
      */
     private function getMonthlyRevenue(): array
     {
+        $startMonth = Carbon::now()->startOfMonth()->subMonths(5);
+        $endMonth = Carbon::now()->endOfMonth();
+
+        $rows = Vente::selectRaw("DATE_TRUNC('month', created_at) as month_bucket, SUM(total) as total_revenue")
+            ->where('status', 'paid')
+            ->whereBetween('created_at', [$startMonth, $endMonth])
+            ->groupBy('month_bucket')
+            ->get()
+            ->keyBy(fn ($row) => Carbon::parse($row->month_bucket)->format('Y-m'));
+
         $labels = [];
         $data = [];
-        
+
         for ($i = 5; $i >= 0; $i--) {
             $date = Carbon::now()->subMonths($i);
+            $monthKey = $date->format('Y-m');
+
             $labels[] = $date->translatedFormat('M Y');
-            
-            $monthTotal = Vente::whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->where('status', 'paid')
-                ->sum('total');
-            $data[] = round($monthTotal, 2);
+
+            $data[] = round((float) ($rows->get($monthKey)->total_revenue ?? 0), 2);
         }
-        
+
         return [
             'labels' => $labels,
             'revenue' => $data
@@ -136,9 +135,11 @@ class DashboardController extends Controller
      */
     private function getTopProducts(): array
     {
-        $topProducts = VenteDetail::select('produit_id', DB::raw('SUM(quantity) as total_qty'), DB::raw('SUM(total_line) as total_revenue'))
-            ->with('produit:id,name')
-            ->groupBy('produit_id')
+        $topProducts = VenteDetail::select('vente_details.produit_id', 'produits.name', DB::raw('SUM(vente_details.quantity) as total_qty'), DB::raw('SUM(vente_details.total_line) as total_revenue'))
+            ->join('produits', 'vente_details.produit_id', '=', 'produits.id')
+            ->whereNotNull('vente_details.produit_id')
+            ->whereNotNull('produits.name')
+            ->groupBy('vente_details.produit_id', 'produits.name')
             ->orderByDesc('total_qty')
             ->take(5)
             ->get();
@@ -146,13 +147,13 @@ class DashboardController extends Controller
         $labels = [];
         $quantities = [];
         $revenues = [];
-        
+
         foreach ($topProducts as $item) {
-            $labels[] = $item->produit->name ?? 'N/A';
-            $quantities[] = $item->total_qty;
-            $revenues[] = round($item->total_revenue, 2);
+            $labels[] = $item->name ?? 'N/A';
+            $quantities[] = (int) $item->total_qty;
+            $revenues[] = round((float) $item->total_revenue, 2);
         }
-        
+
         return [
             'labels' => $labels,
             'quantities' => $quantities,
@@ -165,23 +166,20 @@ class DashboardController extends Controller
      */
     private function getSalesByCategory(): array
     {
-        $salesByCategory = VenteDetail::select('produits.category_id', DB::raw('SUM(vente_details.total_line) as total'))
+        $salesByCategory = VenteDetail::select('categories.name as category_name', DB::raw('SUM(vente_details.total_line) as total'))
             ->join('produits', 'vente_details.produit_id', '=', 'produits.id')
             ->join('categories', 'produits.category_id', '=', 'categories.id')
-            ->groupBy('produits.category_id')
-            ->with(['produit.category'])
+            ->groupBy('categories.name')
             ->get();
-        
-        $categories = Category::whereIn('id', $salesByCategory->pluck('category_id'))->pluck('name', 'id');
-        
+
         $labels = [];
         $data = [];
-        
+
         foreach ($salesByCategory as $item) {
-            $labels[] = $categories[$item->category_id] ?? 'Autre';
-            $data[] = round($item->total, 2);
+            $labels[] = $item->category_name ?? 'Autre';
+            $data[] = round((float) $item->total, 2);
         }
-        
+
         // Add default if empty
         if (empty($labels)) {
             $labels = ['Aucune vente'];
@@ -240,22 +238,23 @@ class DashboardController extends Controller
      */
     private function getHourlySales(): array
     {
+        $hourlyRows = Vente::selectRaw('EXTRACT(HOUR FROM created_at) as sale_hour, SUM(total) as total_sales')
+            ->whereDate('created_at', Carbon::today())
+            ->where('status', 'paid')
+            ->groupBy('sale_hour')
+            ->get()
+            ->keyBy(fn ($row) => (int) $row->sale_hour);
+
         $labels = [];
         $data = [];
-        
+
         // Business hours: 8am to 10pm
         for ($hour = 8; $hour <= 22; $hour++) {
             $labels[] = sprintf('%02d:00', $hour);
-            
-            $hourTotal = Vente::whereDate('created_at', Carbon::today())
-                ->whereTime('created_at', '>=', sprintf('%02d:00:00', $hour))
-                ->whereTime('created_at', '<', sprintf('%02d:00:00', $hour + 1))
-                ->where('status', 'paid')
-                ->sum('total');
-            
-            $data[] = round($hourTotal, 2);
+
+            $data[] = round((float) ($hourlyRows->get($hour)->total_sales ?? 0), 2);
         }
-        
+
         return [
             'labels' => $labels,
             'data' => $data
