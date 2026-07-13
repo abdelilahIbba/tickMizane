@@ -1,12 +1,39 @@
 <x-layout.app title="Commande — Table {{ $table->numero }}">
-<div class="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
+{{-- x-data="{ activeTab: 'menu' }" initialise AlpineJS pour le basculement dynamique d'onglets sur mobile --}}
+<div class="h-[calc(100vh-4rem)] flex flex-col overflow-hidden" x-data="{ activeTab: 'menu' }">
     <form id="orderForm" method="POST" action="{{ route('waiter.order.store', $table) }}" class="flex flex-col flex-1 overflow-hidden">
         @csrf
 
-        <div class="flex flex-1 overflow-hidden">
+        {{-- Barre d'onglets responsive : Visible uniquement sur mobile/tablette (< lg) --}}
+        {{-- Permet de basculer l'affichage complet entre le catalogue et le panier --}}
+        <div class="flex lg:hidden bg-gray-900 border-b border-gray-800 flex-shrink-0">
+            <button type="button" 
+                    @click="activeTab = 'menu'"
+                    :class="activeTab === 'menu' ? 'border-amber-500 text-amber-400 bg-amber-500/5' : 'border-transparent text-gray-400 hover:text-gray-300'"
+                    class="flex-1 py-3 text-center font-semibold text-sm border-b-2 transition-all flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                </svg>
+                Catalogue
+            </button>
+            <button type="button" 
+                    @click="activeTab = 'cart'"
+                    :class="activeTab === 'cart' ? 'border-amber-500 text-amber-400 bg-amber-500/5' : 'border-transparent text-gray-400 hover:text-gray-300'"
+                    class="flex-1 py-3 text-center font-semibold text-sm border-b-2 transition-all flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                Commande
+                <span id="cartCountBadge" class="hidden text-xs bg-amber-500 text-black font-bold px-2 py-0.5 rounded-full transition-all">0</span>
+            </button>
+        </div>
+
+        {{-- Conteneur principal adaptatif : Flex-col (empilé) sur mobile, Flex-row (côte à côte) sur grand écran --}}
+        <div class="flex flex-col lg:flex-row flex-1 overflow-hidden">
 
             {{-- ─────────────────── LEFT: Menu ─────────────────── --}}
-            <div class="flex flex-col flex-1 overflow-hidden border-r border-gray-800">
+            {{-- Affiche la grille si l'onglet Catalogue est actif. Sur grand écran, toujours visible (lg:flex) --}}
+            <div :class="activeTab === 'menu' ? 'flex' : 'hidden lg:flex'" class="flex-col flex-1 overflow-hidden border-r border-gray-800 w-full">
 
                 {{-- Top bar --}}
                 <div class="flex items-center justify-between px-6 py-3 border-b border-gray-800 bg-gray-900/70 backdrop-blur-sm flex-shrink-0">
@@ -61,8 +88,9 @@
                 </div>
 
                 {{-- Products grid --}}
+                {{-- Grille fluide s'adaptant à l'espace restant de chaque breakpoint --}}
                 <div class="flex-1 overflow-y-auto p-4">
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4" id="productsGrid">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4" id="productsGrid">
                         @foreach($products as $product)
                         <div class="product-card group relative bg-gray-900 rounded-2xl overflow-hidden border border-gray-800 cursor-pointer
                                     hover:border-amber-500/60 hover:shadow-lg hover:shadow-amber-500/10
@@ -101,11 +129,12 @@
                             </div>
 
                             {{-- Product info --}}
-                            <div class="p-3">
-                                <h3 class="text-sm font-semibold text-white leading-tight line-clamp-2 mb-1.5">{{ $product->name }}</h3>
-                                <div class="flex items-center justify-between">
-                                    <span class="text-base font-bold text-amber-400">{{ number_format($product->price_vente, 2) }} DH</span>
-                                    <span class="text-xs text-gray-500">{{ $product->unit }}</span>
+                            {{-- Style compact optimisé pour mobile (paddings plus petits, tailles ajustées, hauteur fixe pour alignement) --}}
+                            <div class="p-2 sm:p-3">
+                                <h3 class="text-xs sm:text-sm font-semibold text-white leading-tight line-clamp-2 mb-1 sm:mb-1.5 h-8 sm:h-10 select-none">{{ $product->name }}</h3>
+                                <div class="flex items-center justify-between mt-1 sm:mt-2">
+                                    <span class="text-sm sm:text-base font-bold text-amber-400">{{ number_format($product->price_vente, 2) }} DH</span>
+                                    <span class="text-[10px] sm:text-xs text-gray-500">{{ $product->unit }}</span>
                                 </div>
                             </div>
                         </div>
@@ -123,7 +152,8 @@
             </div>
 
             {{-- ─────────────────── RIGHT: Cart ─────────────────── --}}
-            <div class="w-80 xl:w-96 flex flex-col bg-gray-900/60 flex-shrink-0">
+            {{-- Affiche le panier si l'onglet Commande est actif. Sur grand écran, toujours visible (lg:flex) --}}
+            <div :class="activeTab === 'cart' ? 'flex' : 'hidden lg:flex'" class="w-full lg:w-80 xl:w-96 flex-col bg-gray-900/60 flex-shrink-0">
 
                 {{-- Cart header --}}
                 <div class="px-5 py-4 border-b border-gray-800 flex-shrink-0">
@@ -323,10 +353,12 @@ function updateCart() {
     const empty = document.getElementById('emptyCart');
     const btn = document.getElementById('submitOrder');
     const cnt = document.getElementById('cartCount');
+    const mobileBadge = document.getElementById('cartCountBadge');
 
     if (cart.length === 0) {
         empty.classList.remove('hidden'); container.classList.add('hidden');
         container.innerHTML = ''; btn.disabled = true; cnt.classList.add('hidden');
+        if (mobileBadge) mobileBadge.classList.add('hidden');
         document.getElementById('cartTotal').textContent = '0.00 DH';
         document.getElementById('cartItemsInput').value = ''; return;
     }
@@ -335,6 +367,10 @@ function updateCart() {
     btn.disabled = false;
     const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
     cnt.textContent = totalItems; cnt.classList.remove('hidden');
+    if (mobileBadge) {
+        mobileBadge.textContent = totalItems;
+        mobileBadge.classList.remove('hidden');
+    }
 
     let html = '', total = 0;
     cart.forEach((item, index) => {
