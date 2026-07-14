@@ -25,6 +25,8 @@ use App\Http\Controllers\Settings\SystemSettingsController;
 use App\Http\Controllers\Settings\DocumentationController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\RoomServiceController;
+use App\Http\Controllers\ClientOrderController;
+use App\Http\Controllers\Settings\WifiQrController;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,6 +36,10 @@ use App\Http\Controllers\RoomServiceController;
 Route::redirect('/', '/login');
 
 Route::get('/menu/tv', [MenuController::class, 'tv'])->name('menu.tv');
+
+// Client Ordering (public — no auth required)
+Route::get('/order', [ClientOrderController::class, 'menu'])->name('client.order.menu');
+Route::post('/order/submit', [ClientOrderController::class, 'submitOrder'])->name('client.order.submit');
 
 // Room Service Public Guest Routes
 Route::get('/room-service/menu', [RoomServiceController::class, 'guestMenu'])->name('room-service.menu');
@@ -250,6 +256,10 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/room-service/order/{orderId}/status', [RoomServiceController::class, 'updateOrderStatus'])->name('room-service.order.status');
             Route::delete('/room-service/order/{orderId}/delete', [RoomServiceController::class, 'deleteOrder'])->name('room-service.order.delete');
             Route::get('/room-service/qr-codes', [RoomServiceController::class, 'qrCodesIndex'])->name('room-service.qr-codes');
+
+            // Wi-Fi & Client Ordering QR Codes
+            Route::get('/wifi-qr', [WifiQrController::class, 'index'])->name('wifi-qr.index');
+            Route::post('/wifi-qr', [WifiQrController::class, 'save'])->name('wifi-qr.save');
         });
     });
     

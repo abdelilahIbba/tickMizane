@@ -7,8 +7,14 @@
     <!-- Header -->
     <div class="flex justify-between items-start mb-3">
         <div>
-            <h3 class="text-lg font-bold text-white">Table {{ $order->table->numero ?? 'N/A' }}</h3>
-            <p class="text-sm text-gray-400">{{ $order->table->name ?? 'Non assignée' }}</p>
+            <h3 class="text-lg font-bold text-white">
+                @if($order->table)
+                    Table {{ $order->table->numero ?? $order->table->name }}
+                @else
+                    {{ Str::before($order->waiter_notes ?? 'Commande client', ' | ') }}
+                @endif
+            </h3>
+            <p class="text-sm text-gray-400">{{ $order->table->name ?? '' }}</p>
         </div>
         <div class="text-right">
             <span class="px-2 py-1 text-xs font-semibold rounded-full
@@ -25,7 +31,8 @@
     <!-- Waiter Info -->
     <div class="mb-3 pb-3 border-b border-gray-700">
         <p class="text-sm text-gray-300">
-            <span class="font-medium text-gray-400">Serveur:</span> {{ $order->user->name }}
+            <span class="font-medium text-gray-400">Serv./Client:</span>
+            {{ $order->user?->name ?? 'Commande client' }}
         </p>
         <p class="text-xs text-gray-500">Cmd #{{ $order->id }} - {{ $order->created_at->format('H:i') }}</p>
     </div>

@@ -26,8 +26,28 @@ class WaiterController extends Controller
     public function index()
     {
         $tables = Table::orderBy('id')->get();
-        
-        return view('waiter.index', compact('tables'));
+
+        // Active kitchen orders from the client ordering page (user_id = null)
+        $clientOrders = Commande::where('type', 'kitchen')
+            ->whereNull('user_id')
+            ->whereIn('status', ['en_cuisine', 'en_preparation', 'pret'])
+            ->with('details.produit')
+            ->latest()
+            ->get();
+
+        $restaurantOrders = $clientOrders->filter(
+            fn($o) => str_starts_with((string) $o->waiter_notes, 'Commande client - Table')
+        )->values();
+
+        $poolOrders = $clientOrders->filter(
+            fn($o) => str_starts_with((string) $o->waiter_notes, 'Commande client - Piscine')
+        )->values();
+
+        $roomOrders = $clientOrders->filter(
+            fn($o) => str_starts_with((string) $o->waiter_notes, 'Room service')
+        )->values();
+
+        return view('waiter.index', compact('tables', 'restaurantOrders', 'poolOrders', 'roomOrders'));
     }
 
     /**

@@ -94,7 +94,15 @@
             <div class="p-4 border-b border-gray-800 flex justify-between items-center">
                 <div>
                     <div class="flex items-center gap-2">
-                        <span class="text-xl font-bold text-white">Table {{ $order->table->numero ?? 'N/A' }}</span>
+                        @if($order->table)
+                            <span class="text-xl font-bold text-white">Table {{ $order->table->numero ?? $order->table->name }}</span>
+                        @else
+                            @php
+                                $loc = \Illuminate\Support\Str::before($order->waiter_notes ?? 'Commande client', ' | ');
+                                $icon = str_starts_with($loc, 'Room') ? '🏨' : (str_starts_with($loc, 'Commande client - Piscine') ? '🏊' : '🍽️');
+                            @endphp
+                            <span class="text-base font-bold text-white">{{ $icon }} {{ $loc }}</span>
+                        @endif
                         <span class="px-2 py-1 text-xs rounded-full {{ $statusClasses }}">
                             {{ $order->status_label }}
                         </span>

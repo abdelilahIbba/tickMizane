@@ -457,7 +457,12 @@ class OrderService
      */
     protected function buildPendingPaymentTableSummaries(Collection $orders): Collection
     {
-        return $orders
+        // Split: orders linked to a real table vs client orders (no table)
+        $withTable    = $orders->filter(fn ($o) => $o->table_id !== null);
+        $withoutTable = $orders->filter(fn ($o) => $o->table_id === null);
+
+        // Group table orders by table_id (existing behaviour)
+        $tableSummaries = $withTable
             ->groupBy('table_id')
             ->map(function (Collection $tableOrders) {
                 /** @var \App\Models\Commande $firstOrder */
@@ -465,7 +470,6 @@ class OrderService
                 $details = $tableOrders->flatMap(function (Commande $order) {
                     return $order->details->map(function ($detail) use ($order) {
                         $detail->source_commande_id = $order->id;
-
                         return $detail;
                     });
                 })->values();
@@ -473,23 +477,52 @@ class OrderService
                 $status = $tableOrders->contains(fn (Commande $order) => $order->status === 'servi') ? 'servi' : 'pret';
 
                 return new Fluent([
-                    'id' => $firstOrder->id,
-                    'representative_commande_id' => $firstOrder->id,
-                    'table' => $firstOrder->table,
-                    'user' => $firstOrder->user,
-                    'user_names' => $tableOrders->pluck('user.name')->filter()->unique()->implode(', '),
-                    'details' => $details,
-                    'total' => (float) $tableOrders->sum(fn (Commande $order) => (float) $order->total),
-                    'created_at' => $firstOrder->created_at,
-                    'status' => $status,
-                    'status_label' => $tableOrders->count() > 1 ? 'Prêtes à payer' : $firstOrder->status_label,
-                    'waiter_notes' => $tableOrders->pluck('waiter_notes')->filter()->implode(' | '),
-                    'ready_for_payment' => true,
-                    'orders_count' => $tableOrders->count(),
-                    'order_refs' => $tableOrders->pluck('id')->map(fn ($id) => 'Cmd #' . $id)->implode(', '),
+                    'id'                          => $firstOrder->id,
+                    'representative_commande_id'  => $firstOrder->id,
+                    'table'                       => $firstOrder->table,
+                    'user'                        => $firstOrder->user,
+                    'user_names'                  => $tableOrders->pluck('user.name')->filter()->unique()->implode(', '),
+                    'details'                     => $details,
+                    'total'                       => (float) $tableOrders->sum(fn (Commande $order) => (float) $order->total),
+                    'created_at'                  => $firstOrder->created_at,
+                    'status'                      => $status,
+                    'status_label'                => $tableOrders->count() > 1 ? 'Prêtes à payer' : $firstOrder->status_label,
+                    'waiter_notes'                => $tableOrders->pluck('waiter_notes')->filter()->implode(' | '),
+                    'ready_for_payment'           => true,
+                    'orders_count'                => $tableOrders->count(),
+                    'order_refs'                  => $tableOrders->pluck('id')->map(fn ($id) => 'Cmd #' . $id)->implode(', '),
+                    'is_client_order'             => false,
                 ]);
             })
             ->values();
+
+        // Each client order (no table) becomes its own independent card
+        $clientSummaries = $withoutTable->map(function (Commande $order) {
+            $details = $order->details->map(function ($detail) use ($order) {
+                $detail->source_commande_id = $order->id;
+                return $detail;
+            })->values();
+
+            return new Fluent([
+                'id'                          => $order->id,
+                'representative_commande_id'  => $order->id,
+                'table'                       => null,
+                'user'                        => null,
+                'user_names'                  => 'Commande client',
+                'details'                     => $details,
+                'total'                       => (float) $order->total,
+                'created_at'                  => $order->created_at,
+                'status'                      => $order->status,
+                'status_label'                => $order->status_label,
+                'waiter_notes'                => $order->waiter_notes,
+                'ready_for_payment'           => true,
+                'orders_count'                => 1,
+                'order_refs'                  => 'Cmd #' . $order->id,
+                'is_client_order'             => true,
+            ]);
+        })->values();
+
+        return $tableSummaries->concat($clientSummaries);
     }
 
     /**
