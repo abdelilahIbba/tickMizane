@@ -35,6 +35,7 @@ class Produit extends Model
         'alert_stock',
         'unit',
         'status',
+        'kitchen_active',
     ];
 
     /**
@@ -49,6 +50,7 @@ class Produit extends Model
             'price_achat' => 'decimal:2',
             'stock_quantity' => 'integer',
             'alert_stock' => 'integer',
+            'kitchen_active' => 'boolean',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
@@ -157,6 +159,14 @@ class Produit extends Model
         return $query->active()->inStock();
     }
 
+    /**
+     * Scope to products that should go through the kitchen.
+     */
+    public function scopeKitchenActive($query)
+    {
+        return $query->where('kitchen_active', true);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Helpers
@@ -169,6 +179,14 @@ class Produit extends Model
     public function isLowStock(): bool
     {
         return $this->stock_quantity <= $this->alert_stock;
+    }
+
+    /**
+     * Check whether the product should be prepared by the kitchen.
+     */
+    public function isKitchenActive(): bool
+    {
+        return (bool) $this->kitchen_active;
     }
 
     /**

@@ -1,42 +1,54 @@
-version: '3.8'
-
 services:
   app:
     build: .
     container_name: laravel_app
+    command: php-fpm -R
     working_dir: /app
     volumes:
-      - ./:/app
-      - /app/vendor
-      - /app/node_modules
+      - ./.env:/app/.env
+      - app_storage_framework:/app/storage/framework
+      - app_bootstrap_cache:/app/bootstrap/cache
     networks:
       - laravel_network
     depends_on:
-      - db
+      postgres:
+        condition: service_started
 
-  db:
-    image: mysql:8.0
-    container_name: laravel_mysql
+  postgres:
+    image: postgres:16-alpine
+    container_name: laravel_postgres
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-laravel}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
-      MYSQL_USER: ${DB_USERNAME:-laravel}
+      POSTGRES_DB: ${DB_DATABASE:-techmizane}
+      POSTGRES_USER: ${DB_USERNAME:-techmizane}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
     volumes:
-      - dbdata:/var/lib/mysql
+      - dbdata:/var/lib/postgresql/data
     networks:
       - laravel_network
     ports:
-      - "3306:3306"
+      - "5432:5432"
+
+  adminer:
+    image: adminer:latest
+    container_name: laravel_adminer
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "8081:8080"
+    networks:
+      - laravel_network
 
   nginx:
     image: nginx:alpine
     container_name: laravel_nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "${APP_PORT:-8000}:80"
+      - "${HTTPS_PORT:-8443}:443"
     volumes:
       - ./:/app
       - ./docker/nginx/conf.d:/etc/nginx/conf.d
@@ -44,7 +56,8 @@ services:
     networks:
       - laravel_network
     depends_on:
-      - app
+      app:
+        condition: service_started
 
   redis:
     image: redis:alpine
@@ -62,3 +75,8 @@ networks:
 volumes:
   dbdata:
     driver: local
+  app_storage_framework:
+    driver: local
+  app_bootstrap_cache:
+    driver: local
+

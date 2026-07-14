@@ -60,6 +60,16 @@
     </div>
 </div>
 
+<div>
+       <label class="block text-xs font-medium text-gray-400 mb-1.5">Cuisine</label>
+       <select name="kitchen_active"
+                     class="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm
+                               focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500">
+              <option value="1">Passe par la cuisine</option>
+              <option value="0">Direct service</option>
+       </select>
+</div>
+
 {{-- Image --}}
 <div class="space-y-3">
     <label class="block text-xs font-medium text-gray-400">Image</label>

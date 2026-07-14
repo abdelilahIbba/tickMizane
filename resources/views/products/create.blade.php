@@ -86,6 +86,13 @@
                     selected="active"
                 />
 
+                <x-form.select
+                    name="kitchen_active"
+                    label="Cuisine"
+                    :options="['1' => 'Passe par la cuisine', '0' => 'Direct service']"
+                    selected="1"
+                />
+
                 <x-form.input
                     type="url"
                     name="image_url"

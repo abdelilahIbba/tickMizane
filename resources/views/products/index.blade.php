@@ -57,7 +57,7 @@
         
         {{-- Products Table --}}
         <x-ui.card :padding="false">
-            <x-ui.table :headers="['Produit', 'Catégorie', 'Prix vente', 'Unité', 'Stock', 'Statut', 'Actions']">
+            <x-ui.table :headers="['Produit', 'Catégorie', 'Prix vente', 'Cuisine', 'Unité', 'Stock', 'Statut', 'Actions']">
                 @forelse($produits as $product)
                     <tr class="hover:bg-gray-700/50 transition-colors">
                         <td class="px-6 py-4">
@@ -76,6 +76,11 @@
                         </td>
                         <td class="px-6 py-4 text-gray-300">{{ $product->category->name ?? '-' }}</td>
                         <td class="px-6 py-4 text-amber-400 font-semibold">{{ number_format($product->price_vente, 2) }} DH</td>
+                        <td class="px-6 py-4">
+                            <span class="text-[11px] font-semibold px-2 py-1 rounded-full {{ $product->kitchen_active ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' : 'bg-sky-500/20 text-sky-300 border border-sky-500/30' }}">
+                                {{ $product->kitchen_active ? 'Cuisine' : 'Direct' }}
+                            </span>
+                        </td>
                         <td class="px-6 py-4 text-gray-300">
                             @php
                                 $units = ['pcs' => 'Pièce', 'kg' => 'Kg', 'l' => 'Litre'];
@@ -128,7 +133,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center text-gray-400">
+                        <td colspan="8" class="px-6 py-12 text-center text-gray-400">
                             <svg class="w-12 h-12 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                             </svg>

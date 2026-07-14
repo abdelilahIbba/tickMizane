@@ -255,5 +255,6 @@ Route::middleware(['auth'])->group(function () {
     // Notifications for all users
     Route::get('/my-notifications', [NotificationController::class, 'myNotifications'])->name('notifications.mine');
     Route::post('/my-notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::get('/cashier/order/{commandeId}/receipt/print', [CashierPosController::class, 'showPrintableReceipt'])->name('cashier.receipt.print');
     
 });

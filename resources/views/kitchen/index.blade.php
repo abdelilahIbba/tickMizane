@@ -116,7 +116,9 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">Table {{ $order->table->numero ?? 'N/A' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ $order->user->name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{{ $order->created_at->format('H:i') }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{{ $order->details->count() }} articles</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                            {{ $order->details->filter(fn ($detail) => $detail->produit?->isKitchenActive())->count() }} articles
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                             <a href="{{ route('kitchen.ticket', $order) }}" target="_blank" class="text-blue-400 hover:text-blue-300">
                                 Imprimer

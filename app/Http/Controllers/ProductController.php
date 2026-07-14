@@ -74,6 +74,7 @@ class ProductController extends Controller
             'alert_stock' => 'nullable|integer|min:0',
             'unit' => 'nullable|in:pcs,kg,l',
             'status' => 'nullable|in:active,inactive',
+            'kitchen_active' => 'nullable|boolean',
             'image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'image_url' => 'nullable|url|max:2048',
         ]);
@@ -81,6 +82,7 @@ class ProductController extends Controller
         $validated['alert_stock'] = $validated['alert_stock'] ?? 10;
         $validated['status'] = $validated['status'] ?? 'active';
         $validated['unit'] = $validated['unit'] ?? 'pcs';
+        $validated['kitchen_active'] = $request->boolean('kitchen_active', true);
 
         $image = $this->resolveImageInput($request, 'products');
         if ($image !== null) {
@@ -140,9 +142,12 @@ class ProductController extends Controller
             'alert_stock' => 'nullable|integer|min:0',
             'unit' => 'nullable|in:pcs,kg,l',
             'status' => 'nullable|in:active,inactive',
+            'kitchen_active' => 'nullable|boolean',
             'image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'image_url' => 'nullable|url|max:2048',
         ]);
+
+        $validated['kitchen_active'] = $request->boolean('kitchen_active', true);
 
         $newImage = $this->resolveImageInput($request, 'products');
         if ($newImage !== null) {

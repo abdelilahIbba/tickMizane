@@ -152,9 +152,14 @@
                                     <span class="text-amber-400 font-bold">{{ number_format($product->price_vente, 2) }} DH</span>
                                     <span class="text-xs text-gray-500">Stock: {{ $product->stock_quantity }} {{ $product->unit }}</span>
                                 </div>
+                                <div class="mb-3">
+                                    <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full {{ $product->kitchen_active ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' : 'bg-sky-500/20 text-sky-300 border border-sky-500/30' }}">
+                                        {{ $product->kitchen_active ? 'Cuisine' : 'Direct service' }}
+                                    </span>
+                                </div>
                                 <div class="flex gap-2">
                                     <button type="button"
-                                            onclick="openEditProductModal({{ $product->id }}, {{ $product->category_id }}, @json($product->name), {{ $product->price_vente }}, {{ $product->price_achat ?? 0 }}, {{ $product->stock_quantity }}, {{ $product->alert_stock }}, @json($product->unit), '{{ $product->status }}', @json($product->display_image_url))"
+                                            onclick="openEditProductModal({{ $product->id }}, {{ $product->category_id }}, @json($product->name), {{ $product->price_vente }}, {{ $product->price_achat ?? 0 }}, {{ $product->stock_quantity }}, {{ $product->alert_stock }}, @json($product->unit), '{{ $product->status }}', {{ $product->kitchen_active ? '1' : '0' }}, @json($product->display_image_url))"
                                             class="flex-1 py-1.5 text-xs font-medium bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 rounded-lg transition-colors">
                                         Modifier
                                     </button>
@@ -336,6 +341,16 @@
                 </div>
             </div>
 
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5">Cuisine</label>
+                <select name="kitchen_active" id="prodKitchenActive"
+                        class="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm
+                               focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500">
+                    <option value="1">Passe par la cuisine</option>
+                    <option value="0">Direct service</option>
+                </select>
+            </div>
+
             <div class="space-y-3">
                 <label class="block text-xs font-medium text-gray-400">Image</label>
                 <input type="url" name="image_url" id="prodImageUrl" maxlength="2048"
@@ -431,7 +446,7 @@ function openProductModal() {
     document.getElementById('productModal').classList.remove('hidden');
 }
 
-function openEditProductModal(id, categoryId, name, priceVente, priceAchat, stock, alertStock, unit, status, imageUrl) {
+function openEditProductModal(id, categoryId, name, priceVente, priceAchat, stock, alertStock, unit, status, kitchenActive, imageUrl) {
     const form = document.getElementById('prodForm');
     form.reset();
     form.action = BASE + '/settings/articles/products/' + id;
@@ -445,6 +460,7 @@ function openEditProductModal(id, categoryId, name, priceVente, priceAchat, stoc
     document.getElementById('prodAlertStock').value  = alertStock;
     document.getElementById('prodUnit').value        = unit;
     document.getElementById('prodStatus').value      = status;
+    document.getElementById('prodKitchenActive').value = kitchenActive ? '1' : '0';
     document.getElementById('prodFileLabel').textContent = 'Choisir un fichier…';
 
     const isUrl = imageUrl && imageUrl.startsWith('http');

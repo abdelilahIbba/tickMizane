@@ -28,7 +28,7 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-sm text-gray-400">En attente</p>
+                    <p class="text-sm text-gray-400">Tables à encaisser</p>
                     <p class="text-2xl font-bold text-white">{{ $pendingOrders->count() }}</p>
                 </div>
             </div>
@@ -80,6 +80,14 @@
     <!-- Orders Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         @forelse($pendingOrders as $order)
+        @php
+            $statusClasses = match($order->status) {
+                'en_cuisine' => 'bg-orange-500/20 text-orange-400 border border-orange-500/30',
+                'en_preparation' => 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+                'servi' => 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30',
+                default => 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+            };
+        @endphp
         <div class="bg-gray-900/50 backdrop-blur-sm rounded-lg border shadow-lg overflow-hidden
             {{ $order->status === 'pret' || $order->status === 'servi' ? 'border-emerald-500/50' : 'border-gray-800' }}">
             <!-- Order Header -->
@@ -87,12 +95,7 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="text-xl font-bold text-white">Table {{ $order->table->numero ?? 'N/A' }}</span>
-                        <span class="px-2 py-1 text-xs rounded-full
-                            @if($order->status === 'en_cuisine') bg-orange-500/20 text-orange-400 border border-orange-500/30
-                            @elseif($order->status === 'en_preparation') bg-blue-500/20 text-blue-400 border border-blue-500/30
-                            @elseif($order->status === 'pret') bg-emerald-500/20 text-emerald-400 border border-emerald-500/30
-                            @elseif($order->status === 'servi') bg-cyan-500/20 text-cyan-400 border border-cyan-500/30
-                            @endif">
+                        <span class="px-2 py-1 text-xs rounded-full {{ $statusClasses }}">
                             {{ $order->status_label }}
                         </span>
                     </div>
@@ -131,12 +134,12 @@
             <!-- Order Footer -->
             <div class="p-4 bg-gray-950/50 border-t border-gray-800">
                 <div class="flex items-center justify-between mb-3">
-                    <span class="text-sm text-gray-400">Serveur: {{ $order->user->name ?? 'N/A' }}</span>
-                    <span class="text-sm text-gray-500">Cmd #{{ $order->id }}</span>
+                    <span class="text-sm text-gray-400">Serveur: {{ $order->user_names ?? ($order->user->name ?? 'N/A') }}</span>
+                    <span class="text-sm text-gray-500">{{ $order->order_refs ?? ('Cmd #' . $order->id) }}</span>
                 </div>
                 
-                @if($order->isReadyForPayment())
-                <a href="{{ route('cashier.payment', $order) }}" 
+                @if($order->ready_for_payment ?? false)
+                <a href="{{ route('cashier.payment', $order->representative_commande_id ?? $order->id) }}" 
                    class="block w-full px-4 py-3 bg-emerald-600 text-white text-center font-semibold rounded-lg hover:bg-emerald-700 transition-colors">
                     Encaisser {{ number_format($order->total, 2) }} DH
                 </a>

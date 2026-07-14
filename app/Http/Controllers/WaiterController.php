@@ -9,6 +9,7 @@ use App\Models\Commande;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class WaiterController extends Controller
 {
@@ -59,6 +60,14 @@ class WaiterController extends Controller
                 $validated['items'],
                 $validated['waiter_notes'] ?? null
             );
+
+            if ((int) $commande->table_id !== (int) $table->id) {
+                DB::table('commandes')
+                    ->where('id', $commande->id)
+                    ->update(['table_id' => $table->id]);
+
+                $commande->refresh();
+            }
 
             if ($request->expectsJson()) {
                 return response()->json([

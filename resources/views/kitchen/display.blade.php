@@ -44,7 +44,7 @@
                                 <span class="text-sm text-gray-500" x-text="getTimeElapsed(order.created_at)"></span>
                             </div>
                             <div class="space-y-2 text-lg">
-                                <template x-for="detail in order.details" :key="detail.id">
+                                <template x-for="detail in order.details.filter(detail => detail.produit && detail.produit.kitchen_active)" :key="detail.id">
                                     <div class="flex items-start">
                                         <span class="font-bold text-white w-8" x-text="detail.quantity + 'x'"></span>
                                         <div class="flex-1">
@@ -82,7 +82,7 @@
                                 <span class="text-sm text-blue-400" x-text="getTimeElapsed(order.validated_at || order.updated_at)"></span>
                             </div>
                             <div class="space-y-2 text-lg">
-                                <template x-for="detail in order.details" :key="detail.id">
+                                <template x-for="detail in order.details.filter(detail => detail.produit && detail.produit.kitchen_active)" :key="detail.id">
                                     <div class="flex items-start">
                                         <span class="font-bold text-white w-8" x-text="detail.quantity + 'x'"></span>
                                         <div class="flex-1">
@@ -117,7 +117,7 @@
                                 <span class="text-sm text-emerald-500 font-bold">PRÊT!</span>
                             </div>
                             <div class="space-y-2 text-lg">
-                                <template x-for="detail in order.details" :key="detail.id">
+                                <template x-for="detail in order.details.filter(detail => detail.produit && detail.produit.kitchen_active)" :key="detail.id">
                                     <div class="flex items-start opacity-75">
                                         <span class="font-bold text-white w-8" x-text="detail.quantity + 'x'"></span>
                                         <div class="flex-1">

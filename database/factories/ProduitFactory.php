@@ -27,6 +27,7 @@ class ProduitFactory extends Factory
             'alert_stock' => 10,
             'unit' => $this->faker->randomElement(['pcs', 'kg', 'l']),
             'status' => 'active',
+            'kitchen_active' => true,
         ];
     }
 
@@ -58,6 +59,13 @@ class ProduitFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'inactive',
+        ]);
+    }
+
+    public function directService(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'kitchen_active' => false,
         ]);
     }
 }

@@ -60,7 +60,10 @@ class ProductController extends Controller
             'stock_alert_threshold' => 'nullable|integer|min:0',
             'unit' => 'nullable|string|max:50',
             'status' => 'nullable|in:active,archived',
+            'kitchen_active' => 'nullable|boolean',
         ]);
+
+        $validated['kitchen_active'] = $request->boolean('kitchen_active', true);
 
         $product = Produit::create($validated);
 
@@ -102,7 +105,10 @@ class ProductController extends Controller
             'stock_alert_threshold' => 'nullable|integer|min:0',
             'unit' => 'nullable|string|max:50',
             'status' => 'nullable|in:active,archived',
+            'kitchen_active' => 'nullable|boolean',
         ]);
+
+        $validated['kitchen_active'] = $request->boolean('kitchen_active', true);
 
         $product->update($validated);
 

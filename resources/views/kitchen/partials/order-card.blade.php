@@ -32,7 +32,10 @@
 
     <!-- Order Items -->
     <div class="space-y-2 mb-3">
-        @foreach($order->details as $detail)
+        @php
+            $kitchenDetails = $order->details->filter(fn ($detail) => $detail->produit?->isKitchenActive())->values();
+        @endphp
+        @foreach($kitchenDetails as $detail)
         <div class="flex justify-between items-start text-sm">
             <div class="flex-1">
                 <span class="font-semibold text-white">{{ $detail->quantity }}x</span>
@@ -43,6 +46,9 @@
             </div>
         </div>
         @endforeach
+        @if($kitchenDetails->isEmpty())
+            <p class="text-xs text-gray-500 italic">Aucun article à préparer pour cette commande.</p>
+        @endif
     </div>
 
     <!-- Notes -->

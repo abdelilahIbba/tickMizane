@@ -12,15 +12,20 @@ use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
+    private const DASHBOARD_CACHE_TTL_SECONDS = 300;
+
     /**
      * Display the dashboard.
      */
     public function index()
     {
-        $dashboardData = Cache::remember('dashboard:admin:v1', now()->addSeconds(30), function () {
+        $dashboardData = Cache::remember('dashboard:admin:v2', now()->addSeconds(self::DASHBOARD_CACHE_TTL_SECONDS), function () {
             // Today's sales stats
-            $todaySales = Vente::today()->paid()->sum('total');
-            $todayTransactions = Vente::today()->paid()->count();
+            $todayStats = Vente::today()->paid()
+                ->selectRaw('COALESCE(SUM(total), 0) as total_sales, COUNT(*) as tx_count')
+                ->first();
+            $todaySales = (float) ($todayStats->total_sales ?? 0);
+            $todayTransactions = (int) ($todayStats->tx_count ?? 0);
 
             // Low stock products
             $lowStockProducts = Produit::active()->lowStock()->count();
@@ -135,10 +140,15 @@ class DashboardController extends Controller
      */
     private function getTopProducts(): array
     {
+        $startDate = Carbon::now()->subDays(30);
+
         $topProducts = VenteDetail::select('vente_details.produit_id', 'produits.name', DB::raw('SUM(vente_details.quantity) as total_qty'), DB::raw('SUM(vente_details.total_line) as total_revenue'))
             ->join('produits', 'vente_details.produit_id', '=', 'produits.id')
+            ->join('ventes', 'vente_details.vente_id', '=', 'ventes.id')
             ->whereNotNull('vente_details.produit_id')
             ->whereNotNull('produits.name')
+            ->where('ventes.status', 'paid')
+            ->where('ventes.created_at', '>=', $startDate)
             ->groupBy('vente_details.produit_id', 'produits.name')
             ->orderByDesc('total_qty')
             ->take(5)
@@ -166,9 +176,14 @@ class DashboardController extends Controller
      */
     private function getSalesByCategory(): array
     {
+        $startDate = Carbon::now()->subDays(30);
+
         $salesByCategory = VenteDetail::select('categories.name as category_name', DB::raw('SUM(vente_details.total_line) as total'))
             ->join('produits', 'vente_details.produit_id', '=', 'produits.id')
             ->join('categories', 'produits.category_id', '=', 'categories.id')
+            ->join('ventes', 'vente_details.vente_id', '=', 'ventes.id')
+            ->where('ventes.status', 'paid')
+            ->where('ventes.created_at', '>=', $startDate)
             ->groupBy('categories.name')
             ->get();
 
