@@ -24,6 +24,7 @@ use App\Http\Controllers\Settings\PermissionManagementController;
 use App\Http\Controllers\Settings\SystemSettingsController;
 use App\Http\Controllers\Settings\DocumentationController;
 use App\Http\Controllers\MenuController;
+use App\Http\Controllers\RoomServiceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,6 +34,12 @@ use App\Http\Controllers\MenuController;
 Route::redirect('/', '/login');
 
 Route::get('/menu/tv', [MenuController::class, 'tv'])->name('menu.tv');
+
+// Room Service Public Guest Routes
+Route::get('/room-service/menu', [RoomServiceController::class, 'guestMenu'])->name('room-service.menu');
+Route::post('/room-service/order/submit', [RoomServiceController::class, 'submitOrder'])->name('room-service.order.submit');
+Route::get('/room-service/order/success/{orderId}', [RoomServiceController::class, 'orderSuccess'])->name('room-service.order.success');
+Route::get('/room-service/order/status/{orderId}', [RoomServiceController::class, 'getOrderStatus'])->name('room-service.order.status');
 
 /*
 |--------------------------------------------------------------------------
@@ -234,6 +241,15 @@ Route::middleware(['auth'])->group(function () {
             // Documentation Visibility (Admin)
             Route::get('/documentation', [DocumentationController::class, 'index'])->name('documentation.index');
             Route::post('/documentation/{documentation}/visibility', [DocumentationController::class, 'updateVisibility'])->name('documentation.updateVisibility');
+
+            // Room Service Settings & CRUD
+            Route::get('/room-service', [RoomServiceController::class, 'adminIndex'])->name('room-service.index');
+            Route::post('/room-service/store', [RoomServiceController::class, 'storeMenuItem'])->name('room-service.store');
+            Route::put('/room-service/{id}/update', [RoomServiceController::class, 'updateMenuItem'])->name('room-service.update');
+            Route::delete('/room-service/{id}/delete', [RoomServiceController::class, 'deleteMenuItem'])->name('room-service.delete');
+            Route::post('/room-service/order/{orderId}/status', [RoomServiceController::class, 'updateOrderStatus'])->name('room-service.order.status');
+            Route::delete('/room-service/order/{orderId}/delete', [RoomServiceController::class, 'deleteOrder'])->name('room-service.order.delete');
+            Route::get('/room-service/qr-codes', [RoomServiceController::class, 'qrCodesIndex'])->name('room-service.qr-codes');
         });
     });
     
@@ -255,5 +271,6 @@ Route::middleware(['auth'])->group(function () {
     // Notifications for all users
     Route::get('/my-notifications', [NotificationController::class, 'myNotifications'])->name('notifications.mine');
     Route::post('/my-notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::get('/cashier/order/{commandeId}/receipt/print', [CashierPosController::class, 'showPrintableReceipt'])->name('cashier.receipt.print');
     
 });
