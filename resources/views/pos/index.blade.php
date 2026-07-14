@@ -23,8 +23,33 @@
         x-data="posSystem()"
         class="h-[calc(100vh-{{ isset($table) && $table ? '144' : '64' }}px)] flex flex-col lg:flex-row"
     >
+        {{-- Barre d'onglets réactive : Visible uniquement sur mobile/tablette (< lg) --}}
+        {{-- Permet de basculer l'affichage complet entre le catalogue et le panier pour les caissiers --}}
+        <div class="flex lg:hidden bg-gray-900 border-b border-gray-800 flex-shrink-0 w-full">
+            <button type="button" 
+                    @click="activeTab = 'menu'"
+                    :class="activeTab === 'menu' ? 'border-amber-500 text-amber-400 bg-amber-500/5' : 'border-transparent text-gray-400 hover:text-gray-300'"
+                    class="flex-1 py-3 text-center font-semibold text-sm border-b-2 transition-all flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                </svg>
+                Catalogue
+            </button>
+            <button type="button" 
+                    @click="activeTab = 'cart'"
+                    :class="activeTab === 'cart' ? 'border-amber-500 text-amber-400 bg-amber-500/5' : 'border-transparent text-gray-400 hover:text-gray-300'"
+                    class="flex-1 py-3 text-center font-semibold text-sm border-b-2 transition-all flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                Panier
+                <span x-show="cart.length > 0" class="text-xs bg-amber-500 text-black font-bold px-2 py-0.5 rounded-full transition-all" x-text="cart.reduce((s, i) => s + i.quantity, 0)"></span>
+            </button>
+        </div>
+
         {{-- Products Section --}}
-        <div class="flex-1 flex flex-col overflow-hidden">
+        {{-- Affiche la grille si l'onglet Catalogue est actif. Sur grand écran, toujours visible (lg:flex) --}}
+        <div :class="activeTab === 'menu' ? 'flex' : 'hidden lg:flex'" class="flex-1 flex-col overflow-hidden w-full">
             {{-- Header & Search --}}
             <div class="p-4 bg-gray-900 border-b border-gray-800">
                 <div class="flex flex-col sm:flex-row gap-4">
@@ -66,25 +91,26 @@
             
             {{-- Products Grid --}}
             <div class="flex-1 overflow-y-auto p-4">
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+                {{-- Grille fluide s'adaptant à l'espace restant de chaque breakpoint --}}
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4">
                     <template x-for="product in filteredProducts" :key="product.id">
                         <div 
                             @click="addToCart(product)"
-                            class="bg-gray-800 border border-gray-700 rounded-2xl overflow-hidden hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 cursor-pointer group"
+                            class="bg-gray-800 border border-gray-700 rounded-2xl overflow-hidden hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 cursor-pointer group flex flex-col"
                         >
                             {{-- Product Image --}}
-                            <div class="aspect-square bg-gray-900 flex items-center justify-center">
-                                <svg class="w-16 h-16 text-gray-700 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="aspect-[4/3] sm:aspect-square bg-gray-900 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-10 h-10 sm:w-16 sm:h-16 text-gray-700 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                                 </svg>
                             </div>
                             
                             {{-- Product Info --}}
-                            <div class="p-4">
-                                <h3 class="font-semibold text-white truncate group-hover:text-amber-400 transition-colors" x-text="product.name"></h3>
-                                <div class="flex items-center justify-between mt-2">
-                                    <span class="text-xl font-bold text-amber-400" x-text="product.price.toFixed(2) + ' DH'"></span>
-                                    <span class="text-sm text-gray-400" x-text="'Stock: ' + product.stock"></span>
+                            <div class="p-2 sm:p-4 flex-1 flex flex-col justify-between">
+                                <h3 class="text-xs sm:text-sm font-semibold text-white line-clamp-2 h-8 sm:h-10 group-hover:text-amber-400 transition-colors select-none" x-text="product.name"></h3>
+                                <div class="flex items-center justify-between mt-1 sm:mt-2">
+                                    <span class="text-sm sm:text-lg font-bold text-amber-400" x-text="product.price.toFixed(2) + ' DH'"></span>
+                                    <span class="text-[10px] sm:text-sm text-gray-400" x-text="'Stock: ' + product.stock"></span>
                                 </div>
                             </div>
                         </div>
@@ -102,7 +128,8 @@
         </div>
         
         {{-- Cart Sidebar --}}
-        <div class="w-full lg:w-96 xl:w-[420px] flex flex-col bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-700">
+        {{-- Affiche le panier si l'onglet Panier est actif. Sur grand écran, toujours visible (lg:flex) --}}
+        <div :class="activeTab === 'cart' ? 'flex' : 'hidden lg:flex'" class="w-full lg:w-96 xl:w-[420px] flex-col bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-700">
             {{-- Cart Header --}}
             <div class="px-6 py-4 border-b border-gray-700">
                 <div class="flex items-center justify-between">
@@ -288,6 +315,8 @@
                 paymentMethod: 'cash',
                 cart: [],
                 loading: false,
+                // activeTab gère l'affichage dynamique (Menu vs Panier) sur smartphone/tablette via AlpineJS
+                activeTab: 'menu',
                 
                 categories: {!! json_encode($categoriesJson) !!},
                 
