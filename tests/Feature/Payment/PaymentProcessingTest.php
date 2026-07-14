@@ -6,10 +6,10 @@ use PHPUnit\Framework\Attributes\Test;
 
 use App\Models\Commande;
 use App\Models\CommandeDetail;
-use App\Models\Paiement;
 use App\Models\Produit;
 use App\Models\Table;
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -25,6 +25,8 @@ class PaymentProcessingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->withoutMiddleware(ValidateCsrfToken::class);
 
         $this->cashier = User::factory()->create([
             'role' => 'caissier',
@@ -95,7 +97,12 @@ class PaymentProcessingTest extends TestCase
                 'amount_received' => 200.00,
             ]);
 
-        $response->assertRedirect(route('cashier.pending'));
+        $response->assertRedirect(route('cashier.receipt.print', [
+            'commandeId' => $this->order->id,
+            'order_ids' => $this->order->id,
+            'payment_method' => 'cash',
+            'change' => 50,
+        ]));
         $response->assertSessionHas('success');
 
         // Verify order is marked as paid
@@ -122,7 +129,12 @@ class PaymentProcessingTest extends TestCase
                 'amount_received' => 150.00,
             ]);
 
-        $response->assertRedirect(route('cashier.pending'));
+        $response->assertRedirect(route('cashier.receipt.print', [
+            'commandeId' => $this->order->id,
+            'order_ids' => $this->order->id,
+            'payment_method' => 'carte',
+            'change' => 0,
+        ]));
         $response->assertSessionHas('success');
 
         $this->assertEquals('payee', $this->order->fresh()->status);
@@ -144,7 +156,12 @@ class PaymentProcessingTest extends TestCase
                 'card_amount' => 100.00,
             ]);
 
-        $response->assertRedirect(route('cashier.pending'));
+                $response->assertRedirect(route('cashier.receipt.print', [
+                    'commandeId' => $this->order->id,
+                    'order_ids' => $this->order->id,
+                    'payment_method' => 'mixte',
+                    'change' => 0,
+                ]));
         $response->assertSessionHas('success');
 
         $this->assertEquals('payee', $this->order->fresh()->status);
@@ -247,6 +264,7 @@ class PaymentProcessingTest extends TestCase
     public function only_cashiers_can_process_payments()
     {
         
+        /** @var User $waiter */
         $waiter = User::factory()->create([
             'role' => 'serveur',
             'status' => 'active',

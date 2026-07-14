@@ -181,8 +181,8 @@ class Commande extends Model
      */
     public function scopePendingPayment($query)
     {
-        return $query->where('status', 'pret')
-                     ->where('type', 'kitchen');
+        return $query->where('type', 'kitchen')
+            ->whereIn('status', ['pret', 'servi']);
     }
 
     /**
@@ -308,7 +308,7 @@ class Commande extends Model
      */
     public function isPendingPayment(): bool
     {
-        return in_array($this->status, ['en_cuisine', 'en_preparation', 'pret', 'servi']);
+        return in_array($this->status, ['pret', 'servi']);
     }
 
     /**

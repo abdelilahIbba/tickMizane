@@ -8,9 +8,9 @@ use App\Models\Category;
 use App\Models\Produit;
 use App\Models\User;
 use App\Models\Vente;
-use App\Models\Paiement;
 use App\Models\StockMovement;
 use App\Models\Table;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -25,6 +25,8 @@ class CheckoutTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->withoutMiddleware(ValidateCsrfToken::class);
 
         $this->cashier = User::factory()->create([
             'role' => 'caissier',
@@ -381,6 +383,7 @@ class CheckoutTest extends TestCase
     public function only_authorized_roles_can_access_pos()
     {
         
+        /** @var User $waiter */
         $waiter = User::factory()->create([
             'role' => 'serveur',
             'status' => 'active',

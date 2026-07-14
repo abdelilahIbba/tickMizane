@@ -3,15 +3,24 @@
 namespace Tests;
 
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+    }
+
     /**
      * Create authenticated admin user
      */
     protected function actingAsAdmin(): self
     {
+        /** @var \App\Models\User $admin */
         $admin = User::factory()->create([
             'role' => 'admin',
             'status' => 'active',
@@ -25,6 +34,7 @@ abstract class TestCase extends BaseTestCase
      */
     protected function actingAsCaissier(): self
     {
+        /** @var \App\Models\User $caissier */
         $caissier = User::factory()->create([
             'role' => 'caissier',
             'status' => 'active',
@@ -38,6 +48,7 @@ abstract class TestCase extends BaseTestCase
      */
     protected function actingAsServeur(): self
     {
+        /** @var \App\Models\User $serveur */
         $serveur = User::factory()->create([
             'role' => 'serveur',
             'status' => 'active',

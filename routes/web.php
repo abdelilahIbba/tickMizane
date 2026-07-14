@@ -18,6 +18,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\WaiterController;
 use App\Http\Controllers\KitchenController;
 use App\Http\Controllers\CashierPosController;
+use App\Http\Controllers\Settings\ArticlesController;
 use App\Http\Controllers\Settings\UserManagementController;
 use App\Http\Controllers\Settings\PermissionManagementController;
 use App\Http\Controllers\Settings\SystemSettingsController;
@@ -29,9 +30,7 @@ use App\Http\Controllers\MenuController;
 | Public Routes
 |--------------------------------------------------------------------------
 */
-Route::get('/', function () {
-    return redirect()->route('login');
-});
+Route::redirect('/', '/login');
 
 Route::get('/menu/tv', [MenuController::class, 'tv'])->name('menu.tv');
 
@@ -223,6 +222,15 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/system/{group}', [SystemSettingsController::class, 'updateGroup'])->name('system.update');
             Route::post('/system/{group}/reset', [SystemSettingsController::class, 'resetGroup'])->name('system.reset');
 
+            // Articles (Catalogue menu — catégories & produits)
+            Route::get('/articles', [ArticlesController::class, 'index'])->name('articles.index');
+            Route::post('/articles/categories', [ArticlesController::class, 'storeCategory'])->name('articles.categories.store');
+            Route::put('/articles/categories/{category}', [ArticlesController::class, 'updateCategory'])->name('articles.categories.update');
+            Route::delete('/articles/categories/{category}', [ArticlesController::class, 'destroyCategory'])->name('articles.categories.destroy');
+            Route::post('/articles/categories/{category}/products', [ArticlesController::class, 'storeProduct'])->name('articles.products.store');
+            Route::put('/articles/products/{product}', [ArticlesController::class, 'updateProduct'])->name('articles.products.update');
+            Route::delete('/articles/products/{product}', [ArticlesController::class, 'destroyProduct'])->name('articles.products.destroy');
+
             // Documentation Visibility (Admin)
             Route::get('/documentation', [DocumentationController::class, 'index'])->name('documentation.index');
             Route::post('/documentation/{documentation}/visibility', [DocumentationController::class, 'updateVisibility'])->name('documentation.updateVisibility');
@@ -247,5 +255,6 @@ Route::middleware(['auth'])->group(function () {
     // Notifications for all users
     Route::get('/my-notifications', [NotificationController::class, 'myNotifications'])->name('notifications.mine');
     Route::post('/my-notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::get('/cashier/order/{commandeId}/receipt/print', [CashierPosController::class, 'showPrintableReceipt'])->name('cashier.receipt.print');
     
 });

@@ -94,6 +94,13 @@
                     selected="{{ $product->status ?? 'active' }}"
                 />
 
+                <x-form.select
+                    name="kitchen_active"
+                    label="Cuisine"
+                    :options="['1' => 'Passe par la cuisine', '0' => 'Direct service']"
+                    selected="{{ old('kitchen_active', isset($product) ? (int) $product->kitchen_active : 1) }}"
+                />
+
                 <x-form.input
                     type="url"
                     name="image_url"

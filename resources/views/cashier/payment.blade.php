@@ -1,4 +1,16 @@
-<x-layout.app title="Paiement - Commande #{{ $commande->id }}">
+@php
+    $paymentOrders = $paymentOrders ?? collect([$commande]);
+    $primaryOrder = $paymentOrders->first() ?? $commande;
+    $displayTable = $primaryOrder?->table;
+    $displayUser = $primaryOrder?->user;
+    $combinedTotal = $combinedTotal ?? (float) $paymentOrders->sum(fn($order) => (float) $order->total);
+    $ticketDetails = $paymentOrders->flatMap(fn($order) => $order->details)->values();
+    $combinedOrderRefs = $paymentOrders->pluck('id')->map(fn($id) => '#' . $id)->implode(', ');
+    $combinedNotes = $paymentOrders->pluck('waiter_notes')->filter()->values();
+    $displayStatus = $paymentOrders->contains(fn($order) => $order->status === 'servi') ? 'servi' : 'pret';
+@endphp
+
+<x-layout.app title="Paiement - Table {{ $displayTable->numero ?? 'N/A' }}">
 
 @push('styles')
 <style>
@@ -78,22 +90,22 @@
             <span>{{ now()->format('d/m/Y H:i') }}</span>
         </div>
         <div class="ticket-row">
-            <span class="ticket-label">Commande #</span>
-            <span>{{ $commande->id }}</span>
+            <span class="ticket-label">Commandes</span>
+            <span>{{ $combinedOrderRefs }}</span>
         </div>
         <div class="ticket-row">
             <span class="ticket-label">Table</span>
-            <span>{{ $commande->table->name ?? 'N/A' }}</span>
+            <span>{{ $displayTable->name ?? 'N/A' }}</span>
         </div>
         <div class="ticket-row">
             <span class="ticket-label">Serveur</span>
-            <span>{{ $commande->user->name ?? 'N/A' }}</span>
+            <span>{{ $displayUser->name ?? 'N/A' }}</span>
         </div>
 
         <hr class="ticket-sep">
 
         {{-- Items --}}
-        @foreach($commande->details as $detail)
+        @foreach($ticketDetails as $detail)
         <div style="margin: 4px 0;">
             <div style="display:flex; justify-content:space-between;">
                 <span>{{ $detail->quantity }}x {{ $detail->produit->name }}</span>
@@ -112,7 +124,7 @@
         {{-- Total --}}
         <div class="ticket-row ticket-total">
             <span>TOTAL</span>
-            <span>{{ number_format($commande->total, 2) }} DH</span>
+            <span>{{ number_format($combinedTotal, 2) }} DH</span>
         </div>
 
         {{-- Payment method (filled by JS before print) --}}
@@ -170,8 +182,8 @@
     <div class="bg-gray-900/50 backdrop-blur-sm rounded-lg border border-gray-800 shadow-lg p-6 mb-6 no-print">
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-2xl font-bold text-white">Paiement - Table {{ $commande->table->name ?? 'N/A' }}</h1>
-                <p class="text-gray-400">Commande #{{ $commande->id }} - {{ $commande->created_at->format('d/m/Y H:i') }}</p>
+                <h1 class="text-2xl font-bold text-white">Paiement - Table {{ $displayTable->name ?? 'N/A' }}</h1>
+                <p class="text-gray-400">Commandes {{ $combinedOrderRefs }} - {{ $primaryOrder?->created_at?->format('d/m/Y H:i') }}</p>
             </div>
             <div class="flex items-center gap-3">
                 {{-- Print ticket button --}}
@@ -202,31 +214,31 @@
                 <div class="grid grid-cols-2 gap-4 mb-4 pb-4 border-b border-gray-800">
                     <div>
                         <p class="text-sm text-gray-400">Table</p>
-                        <p class="text-lg font-semibold text-white">{{ $commande->table->name ?? 'N/A' }}</p>
+                        <p class="text-lg font-semibold text-white">{{ $displayTable->name ?? 'N/A' }}</p>
                     </div>
                     <div>
                         <p class="text-sm text-gray-400">Serveur</p>
-                        <p class="text-lg font-semibold text-white">{{ $commande->user->name ?? 'N/A' }}</p>
+                        <p class="text-lg font-semibold text-white">{{ $displayUser->name ?? 'N/A' }}</p>
                     </div>
                     <div>
                         <p class="text-sm text-gray-400">Statut</p>
                         <span class="inline-flex px-2 py-1 text-sm rounded-full
-                            @if($commande->status === 'pret') bg-emerald-500/20 text-emerald-400 border border-emerald-500/30
-                            @elseif($commande->status === 'servi') bg-cyan-500/20 text-cyan-400 border border-cyan-500/30
+                            @if($displayStatus === 'pret') bg-emerald-500/20 text-emerald-400 border border-emerald-500/30
+                            @elseif($displayStatus === 'servi') bg-cyan-500/20 text-cyan-400 border border-cyan-500/30
                             @else bg-blue-500/20 text-blue-400 border border-blue-500/30
                             @endif">
-                            {{ $commande->status_label }}
+                            Prêt à payer
                         </span>
                     </div>
                     <div>
-                        <p class="text-sm text-gray-400">Heure</p>
-                        <p class="text-lg font-semibold text-white">{{ $commande->created_at->format('H:i') }}</p>
+                        <p class="text-sm text-gray-400">Commandes</p>
+                        <p class="text-lg font-semibold text-white">{{ $paymentOrders->count() }}</p>
                     </div>
                 </div>
 
                 <!-- Items List -->
                 <div class="space-y-3">
-                    @foreach($commande->details as $detail)
+                    @foreach($ticketDetails as $detail)
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
                             <div class="flex items-center gap-2">
@@ -242,10 +254,14 @@
                     @endforeach
                 </div>
 
-                @if($commande->waiter_notes)
+                @if($combinedNotes->isNotEmpty())
                 <div class="mt-4 pt-4 border-t border-gray-800">
                     <p class="text-sm text-gray-400 mb-1">Notes du serveur:</p>
-                    <p class="text-gray-300 italic">{{ $commande->waiter_notes }}</p>
+                    <div class="space-y-1">
+                        @foreach($combinedNotes as $note)
+                        <p class="text-gray-300 italic">{{ $note }}</p>
+                        @endforeach
+                    </div>
                 </div>
                 @endif
 
@@ -253,7 +269,7 @@
                 <div class="mt-6 pt-4 border-t border-gray-700">
                     <div class="flex justify-between items-center">
                         <span class="text-xl font-bold text-white">Total à payer</span>
-                        <span class="text-2xl font-bold text-emerald-400">{{ number_format($commande->total, 2) }} DH</span>
+                        <span class="text-2xl font-bold text-emerald-400">{{ number_format($combinedTotal, 2) }} DH</span>
                     </div>
                 </div>
             </div>
@@ -265,7 +281,7 @@
                 <h2 class="text-lg font-bold text-white">Mode de paiement</h2>
             </div>
             
-            <form action="{{ route('cashier.process-payment', $commande) }}" method="POST" class="p-4" id="paymentForm">
+            <form action="{{ route('cashier.process-payment', $primaryOrder) }}" method="POST" class="p-4" id="paymentForm">
                 @csrf
                 
                 <!-- Payment Method Selection -->
@@ -309,9 +325,9 @@
                            name="amount_received" 
                            id="amountReceived"
                            step="0.01" 
-                           min="{{ $commande->total }}"
+                           min="{{ $combinedTotal }}"
                            class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
-                           placeholder="{{ number_format($commande->total, 2) }}"
+                           placeholder="{{ number_format($combinedTotal, 2) }}"
                            onchange="calculateChange()">
                     
                     <div id="changeDisplay" class="mt-3 p-3 bg-gray-800/50 rounded-lg hidden">
@@ -356,7 +372,7 @@
                         </div>
                         <div class="flex justify-between items-center mt-2">
                             <span class="text-gray-400">Reste à payer:</span>
-                            <span id="mixedRemaining" class="text-lg font-bold text-red-400">{{ number_format($commande->total, 2) }} DH</span>
+                            <span id="mixedRemaining" class="text-lg font-bold text-red-400">{{ number_format($combinedTotal, 2) }} DH</span>
                         </div>
                     </div>
                 </div>
@@ -366,14 +382,14 @@
                     <label class="block text-sm font-medium text-gray-300 mb-2">Montants rapides</label>
                     <div class="grid grid-cols-4 gap-2">
                         @foreach([10, 20, 50, 100, 200, 500] as $amount)
-                        @if($amount >= $commande->total)
+                        @if($amount >= $combinedTotal)
                         <button type="button" onclick="setAmount({{ $amount }})"
                                 class="px-3 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700">
                             {{ $amount }} DH
                         </button>
                         @endif
                         @endforeach
-                        <button type="button" onclick="setAmount({{ $commande->total }})"
+                        <button type="button" onclick="setAmount({{ $combinedTotal }})"
                                 class="px-3 py-2 bg-emerald-600/20 text-emerald-400 rounded-lg hover:bg-emerald-600/30 transition-colors border border-emerald-500/30">
                             Exact
                         </button>
@@ -392,7 +408,7 @@
 
 @push('scripts')
 <script>
-const orderTotal = {{ $commande->total }};
+const orderTotal = {{ $combinedTotal }};
 let selectedMethod = 'cash';
 
 function selectPaymentMethod(method) {
@@ -553,17 +569,7 @@ document.getElementById('paymentForm').addEventListener('submit', async function
             return;
         }
 
-        // Payment confirmed — print then redirect
-        populateTicket();
-
-        // Redirect after print dialog is dismissed
-        window.onafterprint = function() {
-            window.location.href = '{{ route("cashier.pending") }}';
-        };
-        // Fallback redirect after 10 s in case onafterprint doesn't fire
-        setTimeout(() => { window.location.href = '{{ route("cashier.pending") }}'; }, 10000);
-
-        window.print();
+        window.location.href = data.print_url || data.redirect_url || '{{ route("cashier.pending") }}';
 
     } catch (err) {
         alert('Erreur réseau. Veuillez réessayer.');

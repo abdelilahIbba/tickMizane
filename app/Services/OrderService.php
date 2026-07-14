@@ -9,6 +9,7 @@ use App\Models\Produit;
 use App\Models\Table;
 use App\Events\NewKitchenOrder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Fluent;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -226,22 +227,36 @@ class OrderService
     public function createKitchenOrder(Table $table, array $items, ?string $waiterNotes = null): Commande
     {
         return DB::transaction(function () use ($table, $items, $waiterNotes) {
+            $hasKitchenItems = false;
+            $resolvedItems = [];
+
+            foreach ($items as $item) {
+                $produit = Produit::findOrFail($item['produit_id']);
+                $resolvedItems[] = [$item, $produit];
+
+                if ($produit->isKitchenActive()) {
+                    $hasKitchenItems = true;
+                }
+            }
+
             // Create kitchen order with 'en_cuisine' status
             $commande = Commande::create([
                 'user_id' => Auth::id(),
                 'table_id' => $table->id,
                 'total' => 0,
-                'status' => 'en_cuisine', // Order sent to kitchen
+                'status' => $hasKitchenItems ? 'en_cuisine' : 'pret', // Order sent to kitchen unless everything is direct service
                 'type' => 'kitchen',
                 'waiter_notes' => $waiterNotes,
             ]);
 
+            if ((int) $commande->table_id !== (int) $table->id) {
+                $commande->forceFill(['table_id' => $table->id])->save();
+            }
+
             $total = 0;
 
             // Create commande details with notes
-            foreach ($items as $item) {
-                $produit = Produit::findOrFail($item['produit_id']);
-
+            foreach ($resolvedItems as [$item, $produit]) {
                 CommandeDetail::create([
                     'commande_id' => $commande->id,
                     'produit_id' => $produit->id,
@@ -264,11 +279,17 @@ class OrderService
             // Update total
             $commande->update(['total' => $total]);
 
+            if (!$hasKitchenItems) {
+                $commande->update(['ready_at' => now()]);
+            }
+
             // Update table status to occupied
             $table->update(['status' => 'occupied']);
 
-            // Fire event for kitchen notification
-            event(new NewKitchenOrder($commande));
+            // Fire event for kitchen notification only when kitchen prep is needed
+            if ($hasKitchenItems) {
+                event(new NewKitchenOrder($commande));
+            }
 
             return $commande->fresh(['details.produit', 'table', 'user']);
         });
@@ -312,11 +333,12 @@ class OrderService
             // Check if table has other pending orders
             $otherOrders = Commande::where('table_id', $commande->table_id)
                 ->where('id', '!=', $commande->id)
-                ->pendingPayment()
+                ->where('type', 'kitchen')
+                ->whereNotIn('status', ['payee', 'annule'])
                 ->exists();
             
             if (!$otherOrders) {
-                $commande->table->update(['status' => 'free']);
+                $commande->table()?->update(['status' => 'free']);
             }
         }
 
@@ -328,11 +350,11 @@ class OrderService
      */
     public function getKitchenOrders(): Collection
     {
-        return Commande::kitchen()
+        return $this->filterOrdersWithKitchenItems(Commande::kitchen()
             ->whereIn('status', ['en_cuisine', 'en_preparation', 'pret', 'servi'])
             ->with(['details.produit', 'table', 'user'])
             ->latest()
-            ->get();
+            ->get());
     }
 
     /**
@@ -340,11 +362,11 @@ class OrderService
      */
     public function getActiveKitchenOrders(): Collection
     {
-        return Commande::kitchen()
+        return $this->filterOrdersWithKitchenItems(Commande::kitchen()
             ->whereIn('status', ['en_cuisine', 'en_preparation', 'pret'])
             ->with(['details.produit', 'table', 'user'])
             ->oldest()
-            ->get();
+            ->get());
     }
 
     /**
@@ -352,11 +374,13 @@ class OrderService
      */
     public function getPendingPaymentOrders(): Collection
     {
-        return Commande::kitchen()
-            ->pendingPayment()
+        $orders = Commande::kitchen()
+            ->readyForPayment()
             ->with(['details.produit', 'table', 'user'])
             ->oldest()
             ->get();
+
+        return $this->buildPendingPaymentTableSummaries($orders);
     }
 
     /**
@@ -366,6 +390,19 @@ class OrderService
     {
         return Commande::kitchen()
             ->readyForPayment()
+            ->with(['details.produit', 'table', 'user'])
+            ->oldest()
+            ->get();
+    }
+
+    /**
+     * Get all ready kitchen orders for a specific table payment session.
+     */
+    public function getReadyPaymentOrdersForTable(int $tableId): Collection
+    {
+        return Commande::kitchen()
+            ->readyForPayment()
+            ->where('table_id', $tableId)
             ->with(['details.produit', 'table', 'user'])
             ->oldest()
             ->get();
@@ -399,11 +436,12 @@ class OrderService
             if ($commande->table) {
                 $otherOrders = Commande::where('table_id', $commande->table_id)
                     ->where('id', '!=', $commande->id)
-                    ->pendingPayment()
+                    ->where('type', 'kitchen')
+                    ->whereNotIn('status', ['payee', 'annule'])
                     ->exists();
                 
                 if (!$otherOrders) {
-                    $commande->table->update(['status' => 'free']);
+                    $commande->table()?->update(['status' => 'free']);
                 }
             }
 
@@ -415,6 +453,46 @@ class OrderService
     }
 
     /**
+     * Group ready kitchen orders into one cashier entry per table.
+     */
+    protected function buildPendingPaymentTableSummaries(Collection $orders): Collection
+    {
+        return $orders
+            ->groupBy('table_id')
+            ->map(function (Collection $tableOrders) {
+                /** @var \App\Models\Commande $firstOrder */
+                $firstOrder = $tableOrders->sortBy('created_at')->first();
+                $details = $tableOrders->flatMap(function (Commande $order) {
+                    return $order->details->map(function ($detail) use ($order) {
+                        $detail->source_commande_id = $order->id;
+
+                        return $detail;
+                    });
+                })->values();
+
+                $status = $tableOrders->contains(fn (Commande $order) => $order->status === 'servi') ? 'servi' : 'pret';
+
+                return new Fluent([
+                    'id' => $firstOrder->id,
+                    'representative_commande_id' => $firstOrder->id,
+                    'table' => $firstOrder->table,
+                    'user' => $firstOrder->user,
+                    'user_names' => $tableOrders->pluck('user.name')->filter()->unique()->implode(', '),
+                    'details' => $details,
+                    'total' => (float) $tableOrders->sum(fn (Commande $order) => (float) $order->total),
+                    'created_at' => $firstOrder->created_at,
+                    'status' => $status,
+                    'status_label' => $tableOrders->count() > 1 ? 'Prêtes à payer' : $firstOrder->status_label,
+                    'waiter_notes' => $tableOrders->pluck('waiter_notes')->filter()->implode(' | '),
+                    'ready_for_payment' => true,
+                    'orders_count' => $tableOrders->count(),
+                    'order_refs' => $tableOrders->pluck('id')->map(fn ($id) => 'Cmd #' . $id)->implode(', '),
+                ]);
+            })
+            ->values();
+    }
+
+    /**
      * Generate kitchen ticket data.
      */
     public function generateKitchenTicket(Commande $commande): array
@@ -423,21 +501,46 @@ class OrderService
             throw new \InvalidArgumentException('Cette commande n\'est pas une commande cuisine.');
         }
 
+        $items = $commande->details
+            ->filter(fn ($detail) => $detail->produit?->isKitchenActive())
+            ->values()
+            ->map(function ($detail) {
+                return [
+                    'product_name' => $detail->produit->name,
+                    'quantity' => $detail->quantity,
+                    'notes' => $detail->notes,
+                ];
+            });
+
         return [
             'order_id' => $commande->id,
             'table_number' => $commande->table?->numero ?? 'N/A',
             'table_name' => $commande->table?->name ?? 'Non assignée',
             'waiter_name' => $commande->user?->name ?? 'Système',
             'waiter_notes' => $commande->waiter_notes,
-            'items' => $commande->details->map(function ($detail) {
-                return [
-                    'product_name' => $detail->produit->name,
-                    'quantity' => $detail->quantity,
-                    'notes' => $detail->notes,
-                ];
-            }),
+            'items' => $items,
             'created_at' => $commande->created_at,
             'status' => $commande->status,
         ];
+    }
+
+    /**
+     * Keep only orders that contain at least one kitchen-active product and trim their visible details.
+     */
+    protected function filterOrdersWithKitchenItems(Collection $orders): Collection
+    {
+        return $orders
+            ->filter(function (Commande $order) {
+                return $order->details->contains(fn ($detail) => $detail->produit?->isKitchenActive());
+            })
+            ->values()
+            ->map(function (Commande $order) {
+                $order->setRelation(
+                    'details',
+                    $order->details->filter(fn ($detail) => $detail->produit?->isKitchenActive())->values()
+                );
+
+                return $order;
+            });
     }
 }
