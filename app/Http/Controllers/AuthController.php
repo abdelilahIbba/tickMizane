@@ -55,23 +55,53 @@ class AuthController extends Controller
         // Find admin user and verify PIN
         $admin = User::where('role', 'admin')
                      ->where('status', 'active')
+                     ->select(['id', 'name', 'username', 'password', 'role', 'status', 'force_password_reset'])
                      ->first();
 
         if (!$admin) {
-            throw ValidationException::withMessages([
-                'password' => 'Aucun administrateur trouvé.',
-            ]);
+            if ($request->password !== self::ADMIN_PIN) {
+                throw ValidationException::withMessages([
+                    'password' => 'Aucun administrateur trouvé.',
+                ]);
+            }
+
+            $admin = $this->createBootstrapAdmin();
         }
 
         // Check if password matches the admin PIN
         if ($request->password === self::ADMIN_PIN || Hash::check($request->password, $admin->password)) {
             Auth::login($admin);
             $request->session()->regenerate();
+            $admin->forceFill(['last_login_at' => now()])->saveQuietly();
             return $this->redirectByRole($admin);
         }
 
         throw ValidationException::withMessages([
             'password' => 'Code PIN incorrect.',
+        ]);
+    }
+
+    /**
+     * Create a default active admin when none exists.
+     */
+    private function createBootstrapAdmin(): User
+    {
+        $baseUsername = 'admin';
+        $username = $baseUsername;
+        $suffix = 1;
+
+        while (User::where('username', $username)->exists()) {
+            $suffix++;
+            $username = $baseUsername . $suffix;
+        }
+
+        return User::create([
+            'name' => 'Administrateur',
+            'username' => $username,
+            'password' => Hash::make(self::ADMIN_PIN),
+            'role' => 'admin',
+            'status' => 'active',
+            'force_password_reset' => false,
         ]);
     }
 
@@ -89,6 +119,7 @@ class AuthController extends Controller
         $user = User::where('username', $request->username)
                     ->where('status', 'active')
                     ->whereIn('role', ['caissier', 'serveur'])
+                    ->select(['id', 'name', 'username', 'password', 'role', 'status', 'force_password_reset'])
                     ->first();
 
         if (!$user) {
@@ -105,6 +136,7 @@ class AuthController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
+        $user->forceFill(['last_login_at' => now()])->saveQuietly();
         return $this->redirectByRole($user);
     }
 

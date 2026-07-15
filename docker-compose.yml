@@ -1,47 +1,166 @@
 services:
-  app:
-    build: .
-    container_name: laravel_app
-    command: php-fpm -R
-    working_dir: /app
-    volumes:
-      - ./.env:/app/.env
-      - app_storage_framework:/app/storage/framework
-      - app_bootstrap_cache:/app/bootstrap/cache
-    networks:
-      - laravel_network
-    depends_on:
-      postgres:
-        condition: service_started
 
+  # ─────────────────────────────────────────────────────────────────
+  # PostgreSQL 16 — primary database
+  # ─────────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: laravel_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_DATABASE:-techmizane}
-      POSTGRES_USER: ${DB_USERNAME:-techmizane}
+      POSTGRES_DB:       ${DB_DATABASE:-techmizane}
+      POSTGRES_USER:     ${DB_USERNAME:-techmizane}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+      # Performance tuning passed via environment (pg reads PGCONFIG vars in entrypoint)
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    command: >
+      postgres
+      -c shared_buffers=256MB
+      -c effective_cache_size=768MB
+      -c work_mem=16MB
+      -c maintenance_work_mem=128MB
+      -c wal_buffers=16MB
+      -c checkpoint_completion_target=0.9
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c max_connections=100
+      -c log_min_duration_statement=500
+      -c log_checkpoints=on
     volumes:
       - dbdata:/var/lib/postgresql/data
     networks:
       - laravel_network
     ports:
-      - "5432:5432"
+      - "${DB_EXTERNAL_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-techmizane} -d ${DB_DATABASE:-techmizane}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
-  adminer:
-    image: adminer:latest
-    container_name: laravel_adminer
+  # ─────────────────────────────────────────────────────────────────
+  # Redis — session store, cache, and queue backend
+  # ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:alpine
+    container_name: laravel_redis
     restart: unless-stopped
-    depends_on:
-      - postgres
-    environment:
-      ADMINER_DEFAULT_SERVER: postgres
-    ports:
-      - "8081:8080"
+    # AOF persistence so queued jobs survive container restarts
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
     networks:
       - laravel_network
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 192M
 
+  # ─────────────────────────────────────────────────────────────────
+  # Laravel PHP-FPM application
+  # ─────────────────────────────────────────────────────────────────
+  app:
+    build: .
+    container_name: laravel_app
+    working_dir: /app
+    restart: unless-stopped
+    entrypoint: ["/bin/bash", "/app/docker/entrypoint.sh", "php-fpm", "-R"]
+    volumes:
+      - ./.env:/app/.env:ro
+      - ./.env.testing:/app/.env.testing:ro
+      - ./app:/app/app
+      - ./resources:/app/resources
+      - ./routes:/app/routes
+      - ./public:/app/public
+      - ./config:/app/config
+      - ./database:/app/database
+      - ./tests:/app/tests
+      - ./phpunit.xml:/app/phpunit.xml:ro
+      - app_storage_framework:/app/storage/framework
+      - app_bootstrap_cache:/app/bootstrap/cache
+      - app_logs:/app/storage/logs
+    networks:
+      - laravel_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm -t 2>/dev/null && echo ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ─────────────────────────────────────────────────────────────────
+  # Laravel Queue Worker — processes database / async jobs
+  # ─────────────────────────────────────────────────────────────────
+  queue:
+    build: .
+    container_name: laravel_queue
+    working_dir: /app
+    restart: unless-stopped
+    # Override entrypoint: no web bootstrapping needed, just run the worker
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo "⏳ Waiting for app to initialise..."; sleep 10
+        echo "🚀 Starting queue worker..."
+        php artisan queue:work \
+          --sleep=3 \
+          --tries=3 \
+          --timeout=90 \
+          --max-jobs=1000 \
+          --max-time=3600
+    volumes:
+      - ./.env:/app/.env:ro
+      - ./app:/app/app
+      - ./routes:/app/routes
+      - ./config:/app/config
+      - ./database:/app/database
+      - app_storage_framework:/app/storage/framework
+      - app_bootstrap_cache:/app/bootstrap/cache
+      - app_logs:/app/storage/logs
+    networks:
+      - laravel_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ─────────────────────────────────────────────────────────────────
+  # Nginx — reverse proxy / static file server
+  # ─────────────────────────────────────────────────────────────────
   nginx:
     image: nginx:alpine
     container_name: laravel_nginx
@@ -50,33 +169,64 @@ services:
       - "${APP_PORT:-8000}:80"
       - "${HTTPS_PORT:-8443}:443"
     volumes:
-      - ./:/app
-      - ./docker/nginx/conf.d:/etc/nginx/conf.d
-      - ./docker/nginx/ssl:/etc/nginx/ssl
+      - ./public:/app/public:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
     networks:
       - laravel_network
     depends_on:
       app:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/up | grep -q 'Application up' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
-  redis:
-    image: redis:alpine
-    container_name: laravel_redis
+  # ─────────────────────────────────────────────────────────────────
+  # Adminer — lightweight DB UI (dev only)
+  # ─────────────────────────────────────────────────────────────────
+  adminer:
+    image: adminer:latest
+    container_name: laravel_adminer
     restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "${ADMINER_PORT:-8081}:8080"
     networks:
       - laravel_network
-    ports:
-      - "6379:6379"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
+# ─────────────────────────────────────────────────────────────────
+# Networks
+# ─────────────────────────────────────────────────────────────────
 networks:
   laravel_network:
     driver: bridge
 
+# ─────────────────────────────────────────────────────────────────
+# Volumes
+# ─────────────────────────────────────────────────────────────────
 volumes:
   dbdata:
+    driver: local
+  redisdata:
     driver: local
   app_storage_framework:
     driver: local
   app_bootstrap_cache:
     driver: local
-
+  app_logs:
+    driver: local

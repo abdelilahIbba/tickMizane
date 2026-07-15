@@ -14,6 +14,11 @@
                 <a href="{{ route('cashier.history') }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                     Historique
                 </a>
+                @if(auth()->user()?->isAdmin())
+                <a href="{{ route('cashier.tickets') }}" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                    Ventes & CA
+                </a>
+                @endif
             </div>
         </div>
     </div>

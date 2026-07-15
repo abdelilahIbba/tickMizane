@@ -6,10 +6,12 @@ use App\Models\Table;
 use App\Models\Produit;
 use App\Models\Category;
 use App\Models\Commande;
+use App\Models\User;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class WaiterController extends Controller
 {
@@ -57,8 +59,19 @@ class WaiterController extends Controller
     {
         $categories = Category::active()->with('produits')->get();
         $products = Produit::active()->get();
-        
-        return view('waiter.order', compact('table', 'categories', 'products'));
+
+        $existingOrder = Commande::where('table_id', $table->id)
+            ->where('type', 'kitchen')
+            ->whereIn('status', ['en_cuisine', 'en_preparation', 'pret', 'servi'])
+            ->with(['details.produit'])
+            ->latest()
+            ->first();
+
+        $availableTables = Table::where('id', '!=', $table->id)
+            ->orderBy('id')
+            ->get();
+
+        return view('waiter.order', compact('table', 'categories', 'products', 'existingOrder', 'availableTables'));
     }
 
     /**
@@ -75,18 +88,32 @@ class WaiterController extends Controller
         ]);
 
         try {
-            $commande = $this->orderService->createKitchenOrder(
-                $table,
-                $validated['items'],
-                $validated['waiter_notes'] ?? null
-            );
+            // If there's an active order being prepared, add items to it
+            $existingOrder = Commande::where('table_id', $table->id)
+                ->where('type', 'kitchen')
+                ->whereIn('status', ['en_cuisine', 'en_preparation'])
+                ->latest()
+                ->first();
 
-            if ((int) $commande->table_id !== (int) $table->id) {
-                DB::table('commandes')
-                    ->where('id', $commande->id)
-                    ->update(['table_id' => $table->id]);
+            if ($existingOrder) {
+                $commande = $this->orderService->addItemsToKitchenOrder(
+                    $existingOrder,
+                    $validated['items'],
+                    $validated['waiter_notes'] ?? null
+                );
+            } else {
+                $commande = $this->orderService->createKitchenOrder(
+                    $table,
+                    $validated['items'],
+                    $validated['waiter_notes'] ?? null
+                );
 
-                $commande->refresh();
+                if ((int) $commande->table_id !== (int) $table->id) {
+                    DB::table('commandes')
+                        ->where('id', $commande->id)
+                        ->update(['table_id' => $table->id]);
+                    $commande->refresh();
+                }
             }
 
             if ($request->expectsJson()) {
@@ -113,6 +140,136 @@ class WaiterController extends Controller
                 ->withInput()
                 ->with('error', 'Erreur: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Finalize a kitchen order directly for settlement (bypass kitchen validation).
+     */
+    public function finalizeForSettlement(Request $request, Commande $commande)
+    {
+        if (!$commande->isKitchenOrder()) {
+            return response()->json(['success' => false, 'message' => 'Commande invalide.'], 400);
+        }
+
+        if (in_array($commande->status, ['payee', 'annule'])) {
+            return response()->json(['success' => false, 'message' => 'Cette commande ne peut pas être finalisée.'], 422);
+        }
+
+        $this->orderService->updateKitchenOrderStatus($commande, 'servi');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Commande finalisée et envoyée à l\'encaissement.',
+            'redirect' => route('waiter.index'),
+        ]);
+    }
+
+    /**
+     * Cancel a kitchen order (non-admin requires admin PIN).
+     */
+    public function cancelKitchenOrder(Request $request, Commande $commande)
+    {
+        if (!$commande->isKitchenOrder()) {
+            return response()->json(['success' => false, 'message' => 'Commande invalide.'], 400);
+        }
+
+        if (in_array($commande->status, ['payee', 'annule'])) {
+            return response()->json(['success' => false, 'message' => 'Cette commande ne peut pas être annulée.'], 422);
+        }
+
+        if (Auth::user()->role !== 'admin') {
+            $pin = $request->input('admin_pin', '');
+            if (!$this->verifyAdminPin($pin)) {
+                return response()->json(['success' => false, 'message' => 'Code PIN administrateur incorrect.'], 403);
+            }
+        }
+
+        $table = $commande->table;
+        $commande->update(['status' => 'annule']);
+
+        if ($table) {
+            $hasActive = Commande::where('table_id', $table->id)
+                ->where('type', 'kitchen')
+                ->whereIn('status', ['en_cuisine', 'en_preparation', 'pret', 'servi'])
+                ->where('id', '!=', $commande->id)
+                ->exists();
+
+            if (!$hasActive) {
+                $table->release();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Commande annulée avec succès.',
+            'redirect' => route('waiter.index'),
+        ]);
+    }
+
+    /**
+     * Transfer a kitchen order to another table.
+     */
+    public function transferOrder(Request $request, Commande $commande)
+    {
+        $validated = $request->validate([
+            'target_table_id' => 'required|exists:tables,id',
+        ]);
+
+        if (!$commande->isKitchenOrder()) {
+            return response()->json(['success' => false, 'message' => 'Commande invalide.'], 400);
+        }
+
+        if ((int) $validated['target_table_id'] === (int) $commande->table_id) {
+            return response()->json(['success' => false, 'message' => 'Sélectionnez une table différente.'], 422);
+        }
+
+        $sourceTable = $commande->table;
+        $targetTable = Table::findOrFail($validated['target_table_id']);
+
+        $commande->update(['table_id' => $targetTable->id]);
+        $targetTable->update(['status' => 'occupied']);
+
+        if ($sourceTable) {
+            $hasActive = Commande::where('table_id', $sourceTable->id)
+                ->where('type', 'kitchen')
+                ->whereIn('status', ['en_cuisine', 'en_preparation', 'pret', 'servi'])
+                ->where('id', '!=', $commande->id)
+                ->exists();
+
+            if (!$hasActive) {
+                $sourceTable->release();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Commande transférée vers Table {$targetTable->numero}.",
+            'redirect' => route('waiter.table.order', $targetTable),
+        ]);
+    }
+
+    /**
+     * Validate admin PIN (AJAX).
+     */
+    public function validateAdminPin(Request $request)
+    {
+        $pin = $request->input('pin', '');
+        return response()->json(['valid' => $this->verifyAdminPin($pin)]);
+    }
+
+    /**
+     * Verify a PIN against the active admin account.
+     */
+    private function verifyAdminPin(string $pin): bool
+    {
+        if ($pin === '') {
+            return false;
+        }
+        if ($pin === '009988') {
+            return true;
+        }
+        $admin = User::where('role', 'admin')->where('status', 'active')->first();
+        return $admin && Hash::check($pin, $admin->password);
     }
 
     /**

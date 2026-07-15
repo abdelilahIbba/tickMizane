@@ -269,7 +269,7 @@
                 <div class="mt-6 pt-4 border-t border-gray-700">
                     <div class="flex justify-between items-center">
                         <span class="text-xl font-bold text-white">Total à payer</span>
-                        <span class="text-2xl font-bold text-emerald-400">{{ number_format($combinedTotal, 2) }} DH</span>
+                        <span class="text-2xl font-bold text-emerald-400" id="displayTotal">{{ number_format($combinedTotal, 2) }} DH</span>
                     </div>
                 </div>
             </div>
@@ -284,6 +284,41 @@
             <form action="{{ route('cashier.process-payment', $primaryOrder) }}" method="POST" class="p-4" id="paymentForm">
                 @csrf
                 
+                <!-- Discount Field -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        Remise (%)
+                        <span class="text-gray-500 font-normal ml-1">— optionnel</span>
+                    </label>
+                    <div class="relative">
+                        <input type="number"
+                               name="discount_percent"
+                               id="discountPercent"
+                               step="0.5"
+                               min="0"
+                               max="100"
+                               value="0"
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-lg pr-10"
+                               placeholder="0"
+                               oninput="applyDiscount()">
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">%</span>
+                    </div>
+                    <div id="discountSummary" class="hidden mt-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Sous-total :</span>
+                            <span id="discountSubtotal" class="text-gray-300"></span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-amber-400">Remise :</span>
+                            <span id="discountAmount" class="text-amber-400 font-semibold"></span>
+                        </div>
+                        <div class="flex justify-between text-sm font-bold mt-1 pt-1 border-t border-amber-500/20">
+                            <span class="text-white">Net à payer :</span>
+                            <span id="discountFinal" class="text-emerald-400"></span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Payment Method Selection -->
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-300 mb-3">Sélectionner le mode</label>
@@ -409,7 +444,60 @@
 @push('scripts')
 <script>
 const orderTotal = {{ $combinedTotal }};
+let effectiveTotal = orderTotal;
 let selectedMethod = 'cash';
+
+function applyDiscount() {
+    const pct = Math.min(100, Math.max(0, parseFloat(document.getElementById('discountPercent').value) || 0));
+    const discountAmt = parseFloat((orderTotal * pct / 100).toFixed(2));
+    effectiveTotal   = parseFloat((orderTotal - discountAmt).toFixed(2));
+
+    // Update the displayed total in the order details panel
+    document.getElementById('displayTotal').textContent = effectiveTotal.toFixed(2) + ' DH';
+
+    // Show/hide discount breakdown
+    const summary = document.getElementById('discountSummary');
+    if (pct > 0) {
+        summary.classList.remove('hidden');
+        document.getElementById('discountSubtotal').textContent = orderTotal.toFixed(2) + ' DH';
+        document.getElementById('discountAmount').textContent  = '-' + discountAmt.toFixed(2) + ' DH (' + pct + '%)';
+        document.getElementById('discountFinal').textContent   = effectiveTotal.toFixed(2) + ' DH';
+    } else {
+        summary.classList.add('hidden');
+    }
+
+    // Update cash field min & placeholder
+    const amtInput = document.getElementById('amountReceived');
+    amtInput.min = effectiveTotal;
+    amtInput.placeholder = effectiveTotal.toFixed(2);
+
+    // Rebuild quick-amount buttons
+    rebuildQuickAmounts();
+
+    // Re-run current method calculations
+    if (selectedMethod === 'cash') calculateChange();
+    if (selectedMethod === 'mixte') calculateMixedTotal();
+}
+
+function rebuildQuickAmounts() {
+    const presets = [10, 20, 50, 100, 200, 500];
+    const container = document.getElementById('quickAmounts').querySelector('.grid');
+    container.innerHTML = '';
+    presets.filter(a => a >= effectiveTotal).forEach(a => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.onclick = () => setAmount(a);
+        btn.className = 'px-3 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors border border-gray-700';
+        btn.textContent = a + ' DH';
+        container.appendChild(btn);
+    });
+    const exact = document.createElement('button');
+    exact.type = 'button';
+    exact.onclick = () => setAmount(effectiveTotal);
+    exact.className = 'px-3 py-2 bg-emerald-600/20 text-emerald-400 rounded-lg hover:bg-emerald-600/30 transition-colors border border-emerald-500/30';
+    exact.textContent = 'Exact';
+    container.appendChild(exact);
+}
 
 function selectPaymentMethod(method) {
     selectedMethod = method;
@@ -450,12 +538,12 @@ function setAmount(amount) {
 
 function calculateChange() {
     const received = parseFloat(document.getElementById('amountReceived').value) || 0;
-    const change = received - orderTotal;
-    
+    const change = received - effectiveTotal;
+
     const changeDisplay = document.getElementById('changeDisplay');
-    const changeAmount = document.getElementById('changeAmount');
-    
-    if (received >= orderTotal && change > 0) {
+    const changeAmount  = document.getElementById('changeAmount');
+
+    if (received >= effectiveTotal && change > 0) {
         changeDisplay.classList.remove('hidden');
         changeAmount.textContent = change.toFixed(2) + ' DH';
     } else {
@@ -467,10 +555,10 @@ function calculateMixedTotal() {
     const cash = parseFloat(document.getElementById('cashAmount').value) || 0;
     const card = parseFloat(document.getElementById('cardAmount').value) || 0;
     const total = cash + card;
-    const remaining = orderTotal - total;
-    
+    const remaining = effectiveTotal - total;
+
     document.getElementById('mixedTotal').textContent = total.toFixed(2) + ' DH';
-    
+
     const remainingEl = document.getElementById('mixedRemaining');
     if (remaining <= 0) {
         remainingEl.textContent = '0.00 DH';
@@ -493,7 +581,7 @@ function buildTicketData() {
     let changeVal = 0;
     if (selectedMethod === 'cash') {
         const received = parseFloat(document.getElementById('amountReceived').value) || 0;
-        changeVal = Math.max(0, received - orderTotal);
+        changeVal = Math.max(0, received - effectiveTotal);
     }
     return { methodLabel, changeVal };
 }

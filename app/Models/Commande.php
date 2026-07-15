@@ -187,10 +187,30 @@ class Commande extends Model
 
     /**
      * Scope for orders ready for cashier (pret or servi).
+     * Used for the 'Prêtes à payer' counter (food actually prepared).
      */
     public function scopeReadyForPayment($query)
     {
         return $query->whereIn('status', ['pret', 'servi']);
+    }
+
+    /**
+     * Scope for the cashier's pending-payment list.
+     * Staff-placed orders (user_id IS NOT NULL) appear immediately at any active
+     * kitchen status so that customers who pay on the spot are handled without delay.
+     * Self-service / client orders (user_id IS NULL) only surface once pret or servi.
+     */
+    public function scopeForCashier($query)
+    {
+        return $query->where(function ($q) {
+            // Orders placed by a staff member – show at any active status
+            $q->whereNotNull('user_id')
+              ->whereIn('status', ['en_cuisine', 'en_preparation', 'pret', 'servi']);
+        })->orWhere(function ($q) {
+            // Self-service / client orders – only when ready or served
+            $q->whereNull('user_id')
+              ->whereIn('status', ['pret', 'servi']);
+        });
     }
 
     /**
@@ -305,9 +325,14 @@ class Commande extends Model
 
     /**
      * Check if order is pending payment.
+     * Staff orders are payable at any active status; client orders only when pret/servi.
      */
     public function isPendingPayment(): bool
     {
+        $activeStatuses = ['en_cuisine', 'en_preparation', 'pret', 'servi'];
+        if ($this->user_id !== null) {
+            return in_array($this->status, $activeStatuses);
+        }
         return in_array($this->status, ['pret', 'servi']);
     }
 
@@ -324,7 +349,7 @@ class Commande extends Model
      */
     public function isReadyForPayment(): bool
     {
-        return in_array($this->status, ['pret', 'servi']);
+        return $this->isPendingPayment();
     }
 
     /**

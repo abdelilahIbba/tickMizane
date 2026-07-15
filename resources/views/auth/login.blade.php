@@ -84,24 +84,24 @@
             <div class="relative z-10 flex-1 flex flex-col justify-center">
                 <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 backdrop-blur-md w-fit mb-6 shadow-sm">
                     <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.8)]"></span>
-                    <span class="text-xs font-semibold text-amber-100 tracking-wide uppercase">Nouveau Design</span>
+                    <span class="text-xs font-semibold text-amber-100 tracking-wide uppercase">POS Restaurant</span>
                 </div>
 
                 <h1 class="text-5xl font-bold leading-tight mb-6 text-white drop-shadow-lg">
-                    L'excellence au <br>
-                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-500">Service du goût.</span>
+                    Le POS qui pilote <br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-amber-500">votre restaurant en temps réel.</span>
                 </h1>
                 <p class="text-gray-200 text-lg max-w-md leading-relaxed font-medium drop-shadow-md">
-                    Plateforme de gestion centralisée pour une expérience culinaire fluide.
-                    Maitrisez vos commandes, vos stocks et votre personnel en temps réel.
+                    Système de caisse POS conçu pour la restauration: gérez les commandes,
+                    suivez la consommation de stock à chaque vente et coordonnez votre équipe sans friction.
                 </p>
                 
                 <div class="mt-12 flex gap-4">
                     <div class="glass-panel bg-white/10 border-white/20 p-4 rounded-xl flex items-center gap-3 backdrop-blur-md shadow-lg">
                         <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>
                         <div>
-                            <div class="text-xs text-gray-300 uppercase tracking-wider font-semibold">Système</div>
-                            <div class="text-sm font-bold text-emerald-400 drop-shadow-sm">Opérationnel</div>
+                            <div class="text-xs text-gray-300 uppercase tracking-wider font-semibold">Stocks</div>
+                            <div class="text-sm font-bold text-emerald-400 drop-shadow-sm">Consommation maîtrisée</div>
                         </div>
                     </div>
                 </div>
@@ -109,7 +109,7 @@
 
             <!-- Footer Copyright -->
             <div class="relative z-10 text-xs text-gray-400 font-medium">
-                &copy; {{ date('Y') }} TechMizane Solutions. All rights reserved.
+                © 2026 TechMizane Solutions — All rights reserved. Produced by DevNApp Company.
             </div>
         </div>
 

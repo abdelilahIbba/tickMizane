@@ -6,6 +6,23 @@
 @source '../**/*.js';
 
 @theme {
+    --color-gold-50: #fdfbf7;
+    --color-gold-100: #fbf7ed;
+    --color-gold-200: #f5e9d2;
+    --color-gold-300: #edd5ab;
+    --color-gold-400: #dcab62;
+    --color-gold-500: #cfa054;
+    --color-gold-600: #b48641;
+    --color-gold-700: #966d35;
+    --color-gold-800: #78562c;
+    --color-gold-900: #634727;
+    --color-dark-600: #1f2c44;
+    --color-dark-700: #151e30;
+    --color-dark-800: #0d131f;
+    --color-dark-900: #070a0f;
+    --color-gray-750: #2d3748;
+    --color-gray-850: #1a202c;
+    --color-gray-950: #0d1117;
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
     --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
