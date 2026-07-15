@@ -20,8 +20,12 @@ class DashboardController extends Controller
     public function index()
     {
         $dashboardData = Cache::remember('dashboard:admin:v2', now()->addSeconds(self::DASHBOARD_CACHE_TTL_SECONDS), function () {
+            $todayStart = Carbon::today()->startOfDay();
+            $todayEnd = Carbon::today()->endOfDay();
+
             // Today's sales stats
-            $todayStats = Vente::today()->paid()
+            $todayStats = Vente::paid()
+                ->whereBetween('created_at', [$todayStart, $todayEnd])
                 ->selectRaw('COALESCE(SUM(total), 0) as total_sales, COUNT(*) as tx_count')
                 ->first();
             $todaySales = (float) ($todayStats->total_sales ?? 0);
@@ -34,7 +38,8 @@ class DashboardController extends Controller
             $pendingOrders = Commande::pending()->count();
 
             // Recent sales
-            $recentSales = Vente::with('user')
+            $recentSales = Vente::select(['id', 'user_id', 'total', 'created_at'])
+                ->with('user:id,name')
                 ->latest()
                 ->take(5)
                 ->get();
@@ -42,6 +47,7 @@ class DashboardController extends Controller
             // Low stock products list
             $lowStockList = Produit::active()
                 ->lowStock()
+                ->select(['id', 'name', 'stock_quantity', 'alert_stock'])
                 ->take(5)
                 ->get();
 
@@ -74,8 +80,7 @@ class DashboardController extends Controller
 
         $rows = Vente::selectRaw('DATE(created_at) as sale_date, SUM(total) as total_sales, COUNT(*) as tx_count')
             ->where('status', 'paid')
-            ->whereDate('created_at', '>=', $startDate->toDateString())
-            ->whereDate('created_at', '<=', $today->toDateString())
+            ->whereBetween('created_at', [$startDate->copy()->startOfDay(), $today->copy()->endOfDay()])
             ->groupBy('sale_date')
             ->get()
             ->keyBy(fn ($row) => Carbon::parse($row->sale_date)->toDateString());
@@ -253,8 +258,11 @@ class DashboardController extends Controller
      */
     private function getHourlySales(): array
     {
+        $todayStart = Carbon::today()->startOfDay();
+        $todayEnd = Carbon::today()->endOfDay();
+
         $hourlyRows = Vente::selectRaw('EXTRACT(HOUR FROM created_at) as sale_hour, SUM(total) as total_sales')
-            ->whereDate('created_at', Carbon::today())
+            ->whereBetween('created_at', [$todayStart, $todayEnd])
             ->where('status', 'paid')
             ->groupBy('sale_hour')
             ->get()

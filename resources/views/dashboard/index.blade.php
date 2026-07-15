@@ -228,14 +228,16 @@
         </div>
     </div>
     
-    {{-- Chart.js CDN --}}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    
     <script>
-        // Chart.js Global Configuration for Dark Theme
-        Chart.defaults.color = '#9CA3AF';
-        Chart.defaults.borderColor = 'rgba(75, 85, 99, 0.3)';
-        Chart.defaults.font.family = "'Inter', 'system-ui', 'sans-serif'";
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof Chart === 'undefined') {
+                return;
+            }
+
+            // Chart.js Global Configuration for Dark Theme
+            Chart.defaults.color = '#9CA3AF';
+            Chart.defaults.borderColor = 'rgba(75, 85, 99, 0.3)';
+            Chart.defaults.font.family = "'Inter', 'system-ui', 'sans-serif'";
         
         // Color Palette
         const colors = {
@@ -571,7 +573,7 @@
         });
         
         // Payment Methods Chart (Polar Area)
-        new Chart(document.getElementById('paymentMethodsChart'), {
+            new Chart(document.getElementById('paymentMethodsChart'), {
             type: 'polarArea',
             data: {
                 labels: @json($paymentMethods['labels']),
@@ -625,6 +627,7 @@
                     }
                 }
             }
+            });
         });
     </script>
 </x-layout.app>

@@ -151,11 +151,115 @@
                 </div>
             </div>
 
-            {{-- ─────────────────── RIGHT: Cart ─────────────────── --}}
-            {{-- Affiche le panier si l'onglet Commande est actif. Sur grand écran, toujours visible (lg:flex) --}}
-            <div :class="activeTab === 'cart' ? 'flex' : 'hidden lg:flex'" class="w-full lg:w-80 xl:w-96 flex-col bg-gray-900/60 flex-shrink-0">
+        {{-- ─────────────────── RIGHT: Commande Panel ─────────────────── --}}
+        <div :class="activeTab === 'cart' ? 'flex' : 'hidden lg:flex'"
+             class="w-full lg:w-96 xl:w-[440px] flex-col bg-gray-900/60 flex-shrink-0 overflow-hidden">
+
+            @if($existingOrder)
+            {{-- ── Section 1 : Commande actuelle ── --}}
+            <div class="flex flex-col border-b border-gray-700 flex-shrink-0" style="max-height:52%">
+
+                {{-- Header commande actuelle --}}
+                <div class="px-4 py-3 bg-gray-800/80 border-b border-gray-700 flex items-center justify-between flex-shrink-0">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                        <span class="text-sm font-bold text-white truncate">Commande #{{ $existingOrder->id }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        @php
+                            $sc = ['en_cuisine'=>'bg-orange-500/20 text-orange-400 border-orange-500/30','en_preparation'=>'bg-blue-500/20 text-blue-400 border-blue-500/30','pret'=>'bg-emerald-500/20 text-emerald-400 border-emerald-500/30','servi'=>'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'];
+                            $sc = $sc[$existingOrder->status] ?? 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+                        @endphp
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full border {{ $sc }}">
+                            {{ $existingOrder->status_label }}
+                        </span>
+                        <span class="text-xs text-gray-500">{{ $existingOrder->created_at->format('H:i') }}</span>
+                    </div>
+                </div>
+
+                {{-- Items table --}}
+                <div class="overflow-y-auto flex-1 px-3 py-2">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="text-gray-500 border-b border-gray-700/60">
+                                <th class="text-left pb-1.5 font-medium">Article</th>
+                                <th class="text-center pb-1.5 font-medium w-10">Qté</th>
+                                <th class="text-right pb-1.5 font-medium w-16">P.U.</th>
+                                <th class="text-right pb-1.5 font-medium w-16">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800/60">
+                            @foreach($existingOrder->details as $detail)
+                            <tr class="group">
+                                <td class="py-1.5 pr-2">
+                                    <p class="font-medium text-white leading-tight">{{ $detail->produit->name }}</p>
+                                    @if($detail->notes)
+                                    <p class="text-gray-500 italic text-[10px] mt-0.5">{{ $detail->notes }}</p>
+                                    @endif
+                                </td>
+                                <td class="py-1.5 text-center">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 bg-gray-800 rounded-lg text-white font-bold">{{ $detail->quantity }}</span>
+                                </td>
+                                <td class="py-1.5 text-right text-gray-400">{{ number_format($detail->price, 2) }}</td>
+                                <td class="py-1.5 text-right font-bold text-amber-400">{{ number_format($detail->quantity * $detail->price, 2) }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Subtotal + actions --}}
+                <div class="flex-shrink-0 px-4 py-2.5 bg-gray-800/50 border-t border-gray-700/60">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <span class="text-xs text-gray-400 font-medium">Total actuel</span>
+                        <span class="text-base font-bold text-white">{{ number_format($existingOrder->total, 2) }} DH</span>
+                    </div>
+                    <div class="flex gap-2 mb-2">
+                        <button type="button"
+                                onclick="openFinalizeModal()"
+                                class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors text-xs font-semibold">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Finaliser
+                        </button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button"
+                                onclick="openCancelModal()"
+                                class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors text-xs font-semibold">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                            </svg>
+                            Annuler
+                        </button>
+                        <button type="button"
+                                onclick="openTransferModal()"
+                                class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-colors text-xs font-semibold">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                            </svg>
+                            Transférer
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Divider label --}}
+            <div class="flex items-center gap-2 px-4 py-2 flex-shrink-0 bg-gray-900/80">
+                <div class="flex-1 h-px bg-gray-700"></div>
+                <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">+ Nouveaux articles</span>
+                <div class="flex-1 h-px bg-gray-700"></div>
+            </div>
+            @endif
+
+            {{-- ── Section 2 : Nouveau panier ── --}}
+            <div class="flex flex-col flex-1 overflow-hidden">
 
                 {{-- Cart header --}}
+                @unless($existingOrder)
                 <div class="px-5 py-4 border-b border-gray-800 flex-shrink-0">
                     <div class="flex items-center justify-between">
                         <h2 class="text-lg font-bold text-white flex items-center gap-2">
@@ -167,15 +271,21 @@
                         <span id="cartCount" class="hidden text-xs bg-amber-500 text-black font-bold px-2 py-0.5 rounded-full">0</span>
                     </div>
                 </div>
+                @else
+                <div class="px-4 py-2 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Panier</span>
+                    <span id="cartCount" class="hidden text-xs bg-amber-500 text-black font-bold px-2 py-0.5 rounded-full">0</span>
+                </div>
+                @endunless
 
                 {{-- Cart items --}}
                 <div class="flex-1 overflow-y-auto px-4 py-3">
-                    <div id="emptyCart" class="flex flex-col items-center justify-center h-full text-gray-600 py-12">
-                        <svg class="w-16 h-16 mb-3 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div id="emptyCart" class="flex flex-col items-center justify-center h-full text-gray-600 py-8">
+                        <svg class="w-12 h-12 mb-2 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
                         <p class="text-sm font-medium text-gray-500">Panier vide</p>
-                        <p class="text-xs text-gray-600 mt-1">Sélectionnez des produits</p>
+                        <p class="text-xs text-gray-600 mt-0.5">Sélectionnez des produits</p>
                     </div>
                     <div id="cartItems" class="space-y-2 hidden"></div>
                 </div>
@@ -191,9 +301,17 @@
                                   placeholder="Notes pour la cuisine..."></textarea>
                     </div>
                     <div class="flex items-center justify-between py-2 border-t border-gray-800">
-                        <span class="text-base font-semibold text-gray-300">Total</span>
+                        <span class="text-sm font-semibold text-gray-400">
+                            @if($existingOrder) Ajout @else Total @endif
+                        </span>
                         <span id="cartTotal" class="text-xl font-bold text-amber-400">0.00 DH</span>
                     </div>
+                    @if($existingOrder)
+                    <div class="flex items-center justify-between -mt-1 pb-1">
+                        <span class="text-xs text-gray-500">Total cumulé</span>
+                        <span id="grandTotal" class="text-sm font-bold text-gray-300">{{ number_format($existingOrder->total, 2) }} DH</span>
+                    </div>
+                    @endif
                     <button type="submit"
                             id="submitOrder"
                             disabled
@@ -204,13 +322,14 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
                         </svg>
-                        Envoyer à la cuisine
+                        {{ $existingOrder ? 'Ajouter à la commande' : 'Envoyer à la cuisine' }}
                     </button>
                 </div>
             </div>
         </div>
+    </div>
 
-        <input type="hidden" name="items" id="cartItemsInput">
+    <input type="hidden" name="items" id="cartItemsInput">
     </form>
 </div>
 
@@ -265,11 +384,177 @@
     </div>
 </div>
 
+@if($existingOrder)
+{{-- ──────────────── Finalize Modal ──────────────── --}}
+<div id="finalizeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" onclick="closeFinalizeModal()"></div>
+    <div class="relative bg-gray-900 rounded-2xl shadow-2xl border border-emerald-900/40 w-full max-w-sm overflow-hidden">
+        <div class="p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-white">Finaliser pour encaissement</h3>
+                    <p class="text-xs text-gray-400">Commande #{{ $existingOrder->id }} — Table {{ $table->numero }}</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-400 mb-1">La commande sera envoyée <span class="text-white font-semibold">directement à l'encaissement</span> sans passer par la validation cuisine.</p>
+            <div class="flex items-center justify-between bg-gray-800/50 rounded-xl px-4 py-3 my-4">
+                <span class="text-sm text-gray-400">Total à encaisser</span>
+                <span class="text-lg font-bold text-emerald-400">{{ number_format($existingOrder->total, 2) }} DH</span>
+            </div>
+            <p id="finalizeError" class="hidden text-xs text-red-400 mb-3 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2"></p>
+            <div class="flex gap-3">
+                <button type="button"
+                        onclick="closeFinalizeModal()"
+                        class="flex-1 px-4 py-3 bg-gray-800 text-gray-300 rounded-xl hover:bg-gray-700 transition-colors text-sm font-medium">
+                    Retour
+                </button>
+                <button type="button"
+                        id="finalizeConfirmBtn"
+                        onclick="confirmFinalize()"
+                        class="flex-1 px-4 py-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors text-sm font-semibold">
+                    Confirmer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ──────────────── Cancel Modal ──────────────── --}}
+<div id="cancelModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" onclick="closeCancelModal()"></div>
+    <div class="relative bg-gray-900 rounded-2xl shadow-2xl border border-red-900/40 w-full max-w-sm overflow-hidden">
+        <div class="p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-white">Annuler la commande</h3>
+                    <p class="text-xs text-gray-400">Commande #{{ $existingOrder->id }} — Table {{ $table->numero }}</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-400 mb-5">Cette action est irréversible. La commande sera marquée comme annulée.</p>
+
+            @if(Auth::user()->role !== 'admin')
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    Code PIN administrateur requis
+                </label>
+                <input type="password"
+                       id="cancelPinInput"
+                       inputmode="numeric"
+                       maxlength="20"
+                       placeholder="Entrez le code PIN admin"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-xl text-sm
+                              focus:ring-2 focus:ring-red-500/50 focus:border-red-500 placeholder-gray-600
+                              tracking-widest text-center text-lg font-mono"
+                       onkeydown="if(event.key==='Enter') confirmCancel()">
+            </div>
+            @endif
+            <p id="cancelPinError" class="hidden text-xs text-red-400 mb-3 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2"></p>
+
+            <div class="flex gap-3">
+                <button type="button"
+                        onclick="closeCancelModal()"
+                        class="flex-1 px-4 py-3 bg-gray-800 text-gray-300 rounded-xl hover:bg-gray-700 transition-colors text-sm font-medium">
+                    Retour
+                </button>
+                <button type="button"
+                        id="cancelConfirmBtn"
+                        onclick="confirmCancel()"
+                        class="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors text-sm font-semibold">
+                    Confirmer l'annulation
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ──────────────── Transfer Modal ──────────────── --}}
+<div id="transferModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" onclick="closeTransferModal()"></div>
+    <div class="relative bg-gray-900 rounded-2xl shadow-2xl border border-blue-900/40 w-full max-w-md overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-white">Transférer la commande</h3>
+                    <p class="text-xs text-gray-400">De Table {{ $table->numero }} → choisir une table</p>
+                </div>
+            </div>
+            <button onclick="closeTransferModal()" class="w-7 h-7 bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 hover:text-white transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-5">
+            <p class="text-xs text-gray-500 mb-4">Sélectionnez la table cible :</p>
+            <input type="hidden" id="selectedTargetTable" value="">
+            <div class="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-64 overflow-y-auto">
+                @foreach($availableTables as $tbl)
+                <button type="button"
+                        class="transfer-table-btn flex flex-col items-center justify-center gap-1 p-2 rounded-xl border transition-all
+                               {{ $tbl->status === 'free' || $tbl->status === 'libre'
+                                    ? 'border-gray-700 bg-gray-800/60 hover:border-gray-500'
+                                    : 'border-orange-700/50 bg-orange-900/20 hover:border-orange-600' }}"
+                        data-table-id="{{ $tbl->id }}">
+                    <span class="text-base font-bold {{ $tbl->status === 'free' || $tbl->status === 'libre' ? 'text-white' : 'text-orange-300' }}">
+                        {{ $tbl->numero }}
+                    </span>
+                    <span class="text-[10px] {{ $tbl->status === 'free' || $tbl->status === 'libre' ? 'text-gray-500' : 'text-orange-500' }}">
+                        {{ $tbl->status === 'free' || $tbl->status === 'libre' ? 'Libre' : 'Occupée' }}
+                    </span>
+                </button>
+                @endforeach
+            </div>
+            <p id="transferError" class="hidden text-xs text-red-400 mt-3 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2"></p>
+        </div>
+
+        <div class="flex gap-3 px-5 pb-5">
+            <button type="button"
+                    onclick="closeTransferModal()"
+                    class="flex-1 px-4 py-3 bg-gray-800 text-gray-300 rounded-xl hover:bg-gray-700 transition-colors text-sm font-medium">
+                Annuler
+            </button>
+            <button type="button"
+                    id="transferConfirmBtn"
+                    disabled
+                    onclick="confirmTransfer()"
+                    class="flex-1 px-4 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors text-sm font-semibold
+                           disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed">
+                Confirmer le transfert
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
 @push('scripts')
 <script>
 let cart = [];
 let currentProduct = null;
 let modalQuantity = 1;
+const existingOrderTotal = {{ $existingOrder ? $existingOrder->total : 0 }};
+const isAdmin = {{ Auth::user()->role === 'admin' ? 'true' : 'false' }};
+@if($existingOrder)
+const existingOrderId = {{ $existingOrder->id }};
+const cancelUrl = '{{ route("waiter.order.cancel", $existingOrder) }}';
+const transferUrl = '{{ route("waiter.order.transfer", $existingOrder) }}';
+@endif
+const csrfToken = document.querySelector('input[name="_token"]').value;
 
 /* ── Category filtering ─────────────────────── */
 const tabs = document.querySelectorAll('.category-tab');
@@ -289,7 +574,6 @@ tabs.forEach(tab => {
         if (sp) { sp.classList.add('text-amber-400'); sp.classList.remove('text-gray-300'); }
         const imgDiv = this.querySelector('div');
         if (imgDiv) { imgDiv.classList.add('border-amber-500'); imgDiv.classList.remove('border-gray-600'); }
-
         const cat = this.dataset.category;
         let visible = 0;
         document.querySelectorAll('.product-card').forEach(card => {
@@ -360,6 +644,7 @@ function updateCart() {
         container.innerHTML = ''; btn.disabled = true; cnt.classList.add('hidden');
         if (mobileBadge) mobileBadge.classList.add('hidden');
         document.getElementById('cartTotal').textContent = '0.00 DH';
+        updateGrandTotal(0);
         document.getElementById('cartItemsInput').value = ''; return;
     }
 
@@ -367,10 +652,7 @@ function updateCart() {
     btn.disabled = false;
     const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
     cnt.textContent = totalItems; cnt.classList.remove('hidden');
-    if (mobileBadge) {
-        mobileBadge.textContent = totalItems;
-        mobileBadge.classList.remove('hidden');
-    }
+    if (mobileBadge) { mobileBadge.textContent = totalItems; mobileBadge.classList.remove('hidden'); }
 
     let html = '', total = 0;
     cart.forEach((item, index) => {
@@ -394,7 +676,12 @@ function updateCart() {
     });
     container.innerHTML = html;
     document.getElementById('cartTotal').textContent = total.toFixed(2) + ' DH';
+    updateGrandTotal(total);
     document.getElementById('cartItemsInput').value = JSON.stringify(cart);
+}
+function updateGrandTotal(cartTotal) {
+    const gt = document.getElementById('grandTotal');
+    if (gt) gt.textContent = (existingOrderTotal + cartTotal).toFixed(2) + ' DH';
 }
 window.removeItem = function (i) { cart.splice(i, 1); updateCart(); };
 window.updateQuantity = function (i, d) { const q = cart[i].quantity + d; if (q <= 0) cart.splice(i,1); else cart[i].quantity = q; updateCart(); };
@@ -407,13 +694,11 @@ document.getElementById('orderForm').addEventListener('submit', function (e) {
     const btn = document.getElementById('submitOrder');
     btn.disabled = true;
     btn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Envoi…';
-
     const items = cart.map(i => ({ produit_id: parseInt(i.produit_id), quantity: parseInt(i.quantity), notes: i.notes || null }));
     const waiterNotes = document.querySelector('[name="waiter_notes"]').value;
-
     fetch('{{ route("waiter.order.store", $table) }}', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
         body: JSON.stringify({ items, waiter_notes: waiterNotes })
     })
     .then(r => r.json())
@@ -422,15 +707,149 @@ document.getElementById('orderForm').addEventListener('submit', function (e) {
         else {
             alert(data.message || 'Une erreur est survenue.');
             btn.disabled = false;
-            btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/></svg> Envoyer à la cuisine';
+            btn.innerHTML = restoreSubmitLabel();
         }
     })
     .catch(() => {
         alert('Erreur réseau. Veuillez réessayer.');
         btn.disabled = false;
-        btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/></svg> Envoyer à la cuisine';
+        btn.innerHTML = restoreSubmitLabel();
     });
 });
+function restoreSubmitLabel() {
+    const icon = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/></svg>';
+    return icon + (existingOrderTotal > 0 ? ' Ajouter à la commande' : ' Envoyer à la cuisine');
+}
+
+/* ── Finalize modal ─────────────────────────── */
+@if($existingOrder)
+const finalizeUrl = '{{ route("waiter.order.finalize", $existingOrder) }}';
+window.openFinalizeModal = function () {
+    document.getElementById('finalizeModal').classList.remove('hidden');
+    document.getElementById('finalizeError').classList.add('hidden');
+};
+window.closeFinalizeModal = function () {
+    document.getElementById('finalizeModal').classList.add('hidden');
+};
+window.confirmFinalize = function () {
+    const btn = document.getElementById('finalizeConfirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Finalisation…';
+    fetch(finalizeUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = data.redirect || '{{ route("waiter.index") }}';
+        } else {
+            document.getElementById('finalizeError').textContent = data.message;
+            document.getElementById('finalizeError').classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Confirmer';
+        }
+    })
+    .catch(() => {
+        document.getElementById('finalizeError').textContent = 'Erreur réseau. Réessayez.';
+        document.getElementById('finalizeError').classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Confirmer';
+    });
+};
+
+/* ── Cancel modal ───────────────────────────── */
+window.openCancelModal = function () {
+    document.getElementById('cancelModal').classList.remove('hidden');
+    document.getElementById('cancelPinInput').value = '';
+    document.getElementById('cancelPinError').classList.add('hidden');
+};
+window.closeCancelModal = function () {
+    document.getElementById('cancelModal').classList.add('hidden');
+};
+window.confirmCancel = function () {
+    const pin = isAdmin ? null : document.getElementById('cancelPinInput').value.trim();
+    const btn = document.getElementById('cancelConfirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Annulation…';
+    const body = isAdmin ? {} : { admin_pin: pin };
+    fetch(cancelUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify(body)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = data.redirect || '{{ route("waiter.index") }}';
+        } else {
+            document.getElementById('cancelPinError').textContent = data.message;
+            document.getElementById('cancelPinError').classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Confirmer l\'annulation';
+        }
+    })
+    .catch(() => {
+        document.getElementById('cancelPinError').textContent = 'Erreur réseau. Réessayez.';
+        document.getElementById('cancelPinError').classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Confirmer l\'annulation';
+    });
+};
+
+/* ── Transfer modal ─────────────────────────── */
+window.openTransferModal = function () {
+    document.getElementById('transferModal').classList.remove('hidden');
+    document.getElementById('transferError').classList.add('hidden');
+    document.querySelectorAll('.transfer-table-btn').forEach(b => b.classList.remove('ring-2','ring-blue-500','bg-blue-500/20'));
+    document.getElementById('selectedTargetTable').value = '';
+    document.getElementById('transferConfirmBtn').disabled = true;
+};
+window.closeTransferModal = function () {
+    document.getElementById('transferModal').classList.add('hidden');
+};
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.transfer-table-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.transfer-table-btn').forEach(b => b.classList.remove('ring-2','ring-blue-500','bg-blue-500/20'));
+            this.classList.add('ring-2','ring-blue-500','bg-blue-500/20');
+            document.getElementById('selectedTargetTable').value = this.dataset.tableId;
+            document.getElementById('transferConfirmBtn').disabled = false;
+        });
+    });
+});
+window.confirmTransfer = function () {
+    const targetId = document.getElementById('selectedTargetTable').value;
+    if (!targetId) return;
+    const btn = document.getElementById('transferConfirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Transfert…';
+    fetch(transferUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ target_table_id: parseInt(targetId) })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = data.redirect || '{{ route("waiter.index") }}';
+        } else {
+            document.getElementById('transferError').textContent = data.message;
+            document.getElementById('transferError').classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Confirmer le transfert';
+        }
+    })
+    .catch(() => {
+        document.getElementById('transferError').textContent = 'Erreur réseau. Réessayez.';
+        document.getElementById('transferError').classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Confirmer le transfert';
+    });
+};
+@endif
 </script>
 @endpush
 </x-layout.app>
+

@@ -296,6 +296,47 @@ class OrderService
     }
 
     /**
+     * Add new items to an existing kitchen order.
+     */
+    public function addItemsToKitchenOrder(Commande $commande, array $items, ?string $waiterNotes = null): Commande
+    {
+        return DB::transaction(function () use ($commande, $items, $waiterNotes) {
+            $hasKitchenItems = false;
+
+            foreach ($items as $item) {
+                $produit = Produit::findOrFail($item['produit_id']);
+
+                if ($produit->isKitchenActive()) {
+                    $hasKitchenItems = true;
+                }
+
+                CommandeDetail::create([
+                    'commande_id' => $commande->id,
+                    'produit_id'  => $produit->id,
+                    'quantity'    => $item['quantity'],
+                    'price'       => $produit->price_vente,
+                    'notes'       => $item['notes'] ?? null,
+                ]);
+
+                $this->stockService->reduceStock($produit, $item['quantity'], 'vente', $commande->id);
+            }
+
+            if ($waiterNotes) {
+                $commande->update(['waiter_notes' => $waiterNotes]);
+            }
+
+            $commande->recalculateTotal();
+
+            // Fire kitchen event so kitchen screen refreshes
+            if ($hasKitchenItems) {
+                event(new NewKitchenOrder($commande->fresh()));
+            }
+
+            return $commande->fresh(['details.produit', 'table', 'user']);
+        });
+    }
+
+    /**
      * Update kitchen order status.
      */
     public function updateKitchenOrderStatus(Commande $commande, string $status): Commande
@@ -371,11 +412,12 @@ class OrderService
 
     /**
      * Get orders pending payment for cashier.
+     * Staff orders appear immediately at any active status; client orders only when pret/servi.
      */
     public function getPendingPaymentOrders(): Collection
     {
         $orders = Commande::kitchen()
-            ->readyForPayment()
+            ->forCashier()
             ->with(['details.produit', 'table', 'user'])
             ->oldest()
             ->get();
@@ -384,24 +426,24 @@ class OrderService
     }
 
     /**
-     * Get orders ready for payment (pret or servi).
+     * Get orders available for cashier (staff orders at any active status, client orders pret/servi).
      */
     public function getReadyForPaymentOrders(): Collection
     {
         return Commande::kitchen()
-            ->readyForPayment()
+            ->forCashier()
             ->with(['details.produit', 'table', 'user'])
             ->oldest()
             ->get();
     }
 
     /**
-     * Get all ready kitchen orders for a specific table payment session.
+     * Get all payable kitchen orders for a specific table payment session.
      */
     public function getReadyPaymentOrdersForTable(int $tableId): Collection
     {
         return Commande::kitchen()
-            ->readyForPayment()
+            ->forCashier()
             ->where('table_id', $tableId)
             ->with(['details.produit', 'table', 'user'])
             ->oldest()

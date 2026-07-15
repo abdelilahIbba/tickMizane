@@ -24,7 +24,6 @@ use App\Http\Controllers\Settings\PermissionManagementController;
 use App\Http\Controllers\Settings\SystemSettingsController;
 use App\Http\Controllers\Settings\DocumentationController;
 use App\Http\Controllers\MenuController;
-use App\Http\Controllers\RoomServiceController;
 use App\Http\Controllers\ClientOrderController;
 use App\Http\Controllers\Settings\WifiQrController;
 
@@ -40,12 +39,6 @@ Route::get('/menu/tv', [MenuController::class, 'tv'])->name('menu.tv');
 // Client Ordering (public — no auth required)
 Route::get('/order', [ClientOrderController::class, 'menu'])->name('client.order.menu');
 Route::post('/order/submit', [ClientOrderController::class, 'submitOrder'])->name('client.order.submit');
-
-// Room Service Public Guest Routes
-Route::get('/room-service/menu', [RoomServiceController::class, 'guestMenu'])->name('room-service.menu');
-Route::post('/room-service/order/submit', [RoomServiceController::class, 'submitOrder'])->name('room-service.order.submit');
-Route::get('/room-service/order/success/{orderId}', [RoomServiceController::class, 'orderSuccess'])->name('room-service.order.success');
-Route::get('/room-service/order/status/{orderId}', [RoomServiceController::class, 'getOrderStatus'])->name('room-service.order.status');
 
 /*
 |--------------------------------------------------------------------------
@@ -112,6 +105,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/historiques/record/{model}/{id}', [HistoriqueController::class, 'forRecord'])->name('historiques.record');
         Route::get('/historiques/export', [HistoriqueController::class, 'export'])->name('historiques.export');
         Route::get('/historiques/timeline/{model}/{id}', [HistoriqueController::class, 'timeline'])->name('historiques.timeline');
+
+        // Admin cashier reports and tickets
+        Route::get('/cashier/tickets', [CashierPosController::class, 'tickets'])->name('cashier.tickets');
+        Route::get('/cashier/tickets/print', [CashierPosController::class, 'printTicket'])->name('cashier.tickets.print');
+        Route::get('/cashier/tickets/report/pdf', [CashierPosController::class, 'exportTicketsPdf'])->name('cashier.tickets.report.pdf');
         
         // Notifications (Stock Alerts)
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
@@ -168,6 +166,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/waiter/orders', [WaiterController::class, 'myOrders'])->name('waiter.orders');
         Route::get('/waiter/order/{commande}', [WaiterController::class, 'showOrder'])->name('waiter.order.show');
         
+        // Order actions
+        Route::post('/waiter/order/{commande}/cancel', [WaiterController::class, 'cancelKitchenOrder'])->name('waiter.order.cancel');
+        Route::post('/waiter/order/{commande}/transfer', [WaiterController::class, 'transferOrder'])->name('waiter.order.transfer');
+        Route::post('/waiter/order/{commande}/finalize', [WaiterController::class, 'finalizeForSettlement'])->name('waiter.order.finalize');
+        Route::post('/waiter/validate-pin', [WaiterController::class, 'validateAdminPin'])->name('waiter.validate.pin');
+
         // AJAX endpoints
         Route::get('/waiter/category/{category}/products', [WaiterController::class, 'getProductsByCategory'])->name('waiter.category.products');
         Route::get('/waiter/table/{table}/check', [WaiterController::class, 'checkTable'])->name('waiter.table.check');
@@ -247,15 +251,6 @@ Route::middleware(['auth'])->group(function () {
             // Documentation Visibility (Admin)
             Route::get('/documentation', [DocumentationController::class, 'index'])->name('documentation.index');
             Route::post('/documentation/{documentation}/visibility', [DocumentationController::class, 'updateVisibility'])->name('documentation.updateVisibility');
-
-            // Room Service Settings & CRUD
-            Route::get('/room-service', [RoomServiceController::class, 'adminIndex'])->name('room-service.index');
-            Route::post('/room-service/store', [RoomServiceController::class, 'storeMenuItem'])->name('room-service.store');
-            Route::put('/room-service/{id}/update', [RoomServiceController::class, 'updateMenuItem'])->name('room-service.update');
-            Route::delete('/room-service/{id}/delete', [RoomServiceController::class, 'deleteMenuItem'])->name('room-service.delete');
-            Route::post('/room-service/order/{orderId}/status', [RoomServiceController::class, 'updateOrderStatus'])->name('room-service.order.status');
-            Route::delete('/room-service/order/{orderId}/delete', [RoomServiceController::class, 'deleteOrder'])->name('room-service.order.delete');
-            Route::get('/room-service/qr-codes', [RoomServiceController::class, 'qrCodesIndex'])->name('room-service.qr-codes');
 
             // Wi-Fi & Client Ordering QR Codes
             Route::get('/wifi-qr', [WifiQrController::class, 'index'])->name('wifi-qr.index');

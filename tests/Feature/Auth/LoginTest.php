@@ -6,11 +6,26 @@ use PHPUnit\Framework\Attributes\Test;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class LoginTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Disable throttle for all login tests so individual request counts
+        // from earlier tests in the same process do not trigger rate-limiting
+        // on later tests. The dedicated rate-limiting test re-enables it.
+        $this->withoutMiddleware(ThrottleRequests::class);
+
+        // Belt-and-suspenders: also clear any cached throttle counters.
+        RateLimiter::clear('login');
+    }
 
     #[Test]
     public function it_displays_login_page()
@@ -69,15 +84,19 @@ class LoginTest extends TestCase
     }
 
     #[Test]
-    public function admin_login_fails_when_no_admin_exists()
+    public function admin_login_creates_bootstrap_admin_when_none_exists_and_pin_is_valid()
     {
         $response = $this->post(route('login.submit'), [
             'login_mode' => 'admin',
             'password' => '009988',
         ]);
 
-        $response->assertSessionHasErrors('password');
-        $this->assertGuest();
+        $response->assertRedirect(route('dashboard'));
+        $this->assertAuthenticated();
+        $this->assertDatabaseHas('users', [
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
     }
 
     #[Test]
@@ -216,6 +235,9 @@ class LoginTest extends TestCase
     #[Test]
     public function login_rate_limiting_works_after_five_attempts()
     {
+        // Re-enable throttle middleware just for this test.
+        $this->withMiddleware(ThrottleRequests::class);
+
         // Make 5 failed login attempts
         for ($i = 0; $i < 5; $i++) {
             $this->post(route('login.submit'), [

@@ -7,12 +7,8 @@
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.svg') }}">
     <title>{{ $title ?? 'Connexion' }} - Techmizane Cash</title>
-    
-    {{-- Tailwind CSS via CDN --}}
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    {{-- Alpine.js --}}
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     <style>
         [x-cloak] { display: none !important; }

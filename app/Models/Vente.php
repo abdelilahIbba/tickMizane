@@ -119,7 +119,10 @@ class Vente extends Model
      */
     public function scopeToday($query)
     {
-        return $query->whereDate('created_at', today());
+        $start = today()->startOfDay();
+        $end = today()->endOfDay();
+
+        return $query->whereBetween('created_at', [$start, $end]);
     }
 
     /**

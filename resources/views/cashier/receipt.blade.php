@@ -86,8 +86,8 @@
 </head>
 <body>
     <div class="header">
-        <h1>Techmizane Cash</h1>
-        <p>Restaurant & Café</p>
+        <h1>Oussoul House</h1>
+        <p>Restaurant &amp; Hôtel</p>
         <p>{{ now()->format('d/m/Y H:i') }}</p>
     </div>
 
@@ -153,7 +153,7 @@
         <p>Merci de votre visite!</p>
         <p>À bientôt</p>
         <p style="font-size: 10px; margin-top: 10px;">
-            © {{ date('Y') }} Techmizane Cash
+            © {{ date('Y') }} Oussoul House
         </p>
     </div>
 </body>

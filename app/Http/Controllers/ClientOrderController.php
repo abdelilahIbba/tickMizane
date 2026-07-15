@@ -135,9 +135,15 @@ class ClientOrderController extends Controller
                 'order_id' => $commande->id,
             ]);
         } catch (\Exception $e) {
+            \Log::error('ClientOrder creation failed: ' . $e->getMessage(), [
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+                'input' => $request->except(['items']),
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la creation de la commande.',
+                'debug'   => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }

@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Commande;
+use App\Models\CommandeDetail;
 use App\Models\Paiement;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class CashierPosController extends Controller
@@ -87,10 +89,11 @@ class CashierPosController extends Controller
     public function processPayment(Request $request, Commande $commande)
     {
         $validated = $request->validate([
-            'payment_method' => 'required|in:cash,carte,mixte',
-            'amount_received' => 'nullable|numeric|min:0',
-            'card_amount' => 'nullable|numeric|min:0',
-            'cash_amount' => 'nullable|numeric|min:0',
+            'payment_method'   => 'required|in:cash,carte,mixte',
+            'amount_received'  => 'nullable|numeric|min:0',
+            'card_amount'      => 'nullable|numeric|min:0',
+            'cash_amount'      => 'nullable|numeric|min:0',
+            'discount_percent' => 'nullable|numeric|min:0|max:100',
         ]);
 
         if (!$commande->isKitchenOrder()) {
@@ -108,15 +111,23 @@ class CashierPosController extends Controller
                 throw new \InvalidArgumentException('Aucune commande prête à encaisser pour cette table.');
             }
 
-            $paymentMethod = $validated['payment_method'];
+            $paymentMethod  = $validated['payment_method'];
             $amountReceived = $validated['amount_received'] ?? null;
-            $totalDue = (float) $paymentOrders->sum(fn (Commande $order) => (float) $order->total);
+            $rawTotal       = (float) $paymentOrders->sum(fn (Commande $order) => (float) $order->total);
+
+            // Apply discount
+            $discountPct    = (float) ($validated['discount_percent'] ?? 0);
+            $discountAmt    = round($rawTotal * $discountPct / 100, 2);
+            $totalDue       = round($rawTotal - $discountAmt, 2);
+            $validated['discount_percent'] = $discountPct;
+            $validated['discount_amount']  = $discountAmt;
+            $validated['total_due']        = $totalDue;
 
             // Handle mixed payment validation
             if ($paymentMethod === 'mixte') {
                 $cashAmount = $validated['cash_amount'] ?? 0;
                 $cardAmount = $validated['card_amount'] ?? 0;
-                
+
                 if (($cashAmount + $cardAmount) < $totalDue) {
                     throw new \InvalidArgumentException('Le montant total est insuffisant.');
                 }
@@ -146,10 +157,12 @@ class CashierPosController extends Controller
                     'message' => 'Paiement effectué avec succès',
                     'commande' => $primaryOrder?->fresh(),
                     'print_url' => route('cashier.receipt.print', [
-                        'commandeId' => $primaryOrder?->getKey(),
-                        'order_ids' => $orderIds,
-                        'payment_method' => $paymentMethod,
-                        'change' => $this->resolveChangeAmount($totalDue, $validated),
+                        'commandeId'       => $primaryOrder?->getKey(),
+                        'order_ids'        => $orderIds,
+                        'payment_method'   => $paymentMethod,
+                        'change'           => $this->resolveChangeAmount($totalDue, $validated),
+                        'discount_percent' => $discountPct,
+                        'discount_amount'  => $discountAmt,
                     ]),
                     'redirect_url' => route('cashier.pending'),
                 ]);
@@ -157,10 +170,12 @@ class CashierPosController extends Controller
 
             return redirect()
                 ->route('cashier.receipt.print', [
-                    'commandeId' => $primaryOrder?->getKey(),
-                    'order_ids' => $orderIds,
-                    'payment_method' => $paymentMethod,
-                    'change' => $this->resolveChangeAmount($totalDue, $validated),
+                    'commandeId'       => $primaryOrder?->getKey(),
+                    'order_ids'        => $orderIds,
+                    'payment_method'   => $paymentMethod,
+                    'change'           => $this->resolveChangeAmount($totalDue, $validated),
+                    'discount_percent' => $discountPct,
+                    'discount_amount'  => $discountAmt,
                 ])
                 ->with('success', 'Paiement de ' . number_format($totalDue, 2) . ' DH effectué pour la table ' . ($commande->table?->numero ?? 'N/A'));
                 
@@ -183,8 +198,10 @@ class CashierPosController extends Controller
         }
 
         $amountReceived = (float) ($paymentData['amount_received'] ?? 0);
+        // Use pre-computed discounted total when available
+        $due = (float) ($paymentData['total_due'] ?? $totalDue);
 
-        return max(0, round($amountReceived - $totalDue, 2));
+        return max(0, round($amountReceived - $due, 2));
     }
 
     /**
@@ -194,35 +211,45 @@ class CashierPosController extends Controller
     {
         $paymentMethod = $paymentData['payment_method'];
         $paymentAmount = (float) ($paymentData['payment_amount'] ?? $commande->total);
+
+        // Build discount note when a discount was applied
+        $discountPct = (float) ($paymentData['discount_percent'] ?? 0);
+        $discountAmt = (float) ($paymentData['discount_amount']  ?? 0);
+        $discountNote = $discountPct > 0
+            ? sprintf('Remise %.1f%% (-%.2f DH)', $discountPct, $discountAmt)
+            : null;
         
         if ($paymentMethod === 'mixte') {
             // Create two payment records for mixed payments
             if (($paymentData['cash_amount'] ?? 0) > 0) {
                 Paiement::create([
                     'commande_id' => $commande->id,
-                    'amount' => $paymentData['cash_amount'],
-                    'method' => 'cash',
-                    'reference' => 'PAY-' . strtoupper(uniqid()),
-                    'user_id' => Auth::id(),
+                    'amount'      => $paymentData['cash_amount'],
+                    'method'      => 'cash',
+                    'reference'   => 'PAY-' . strtoupper(uniqid()),
+                    'user_id'     => Auth::id(),
+                    'notes'       => $discountNote,
                 ]);
             }
-            
+
             if (($paymentData['card_amount'] ?? 0) > 0) {
                 Paiement::create([
                     'commande_id' => $commande->id,
-                    'amount' => $paymentData['card_amount'],
-                    'method' => 'carte',
-                    'reference' => 'PAY-' . strtoupper(uniqid()),
-                    'user_id' => Auth::id(),
+                    'amount'      => $paymentData['card_amount'],
+                    'method'      => 'carte',
+                    'reference'   => 'PAY-' . strtoupper(uniqid()),
+                    'user_id'     => Auth::id(),
+                    'notes'       => $discountNote,
                 ]);
             }
         } else {
             Paiement::create([
                 'commande_id' => $commande->id,
-                'amount' => $paymentAmount,
-                'method' => $paymentMethod,
-                'reference' => 'PAY-' . strtoupper(uniqid()),
-                'user_id' => Auth::id(),
+                'amount'      => $paymentAmount,
+                'method'      => $paymentMethod,
+                'reference'   => 'PAY-' . strtoupper(uniqid()),
+                'user_id'     => Auth::id(),
+                'notes'       => $discountNote,
             ]);
         }
     }
@@ -282,16 +309,22 @@ class CashierPosController extends Controller
         }
 
         $paymentMethod = $request->string('payment_method')->value() ?: 'cash';
-        $changeAmount = max(0, (float) $request->input('change', 0));
-        $totalAmount = (float) $orders->sum(fn (Commande $order) => (float) $order->total);
+        $changeAmount  = max(0, (float) $request->input('change', 0));
+        $totalAmount   = (float) $orders->sum(fn (Commande $order) => (float) $order->total);
+        $discountPct   = (float) $request->input('discount_percent', 0);
+        $discountAmt   = (float) $request->input('discount_amount', 0);
+        $netAmount     = $discountAmt > 0 ? round($totalAmount - $discountAmt, 2) : $totalAmount;
 
         return view('cashier.receipt-print', [
-            'orders' => $orders,
-            'commande' => $commande,
-            'totalAmount' => $totalAmount,
-            'paymentMethod' => $paymentMethod,
-            'changeAmount' => $changeAmount,
-            'redirectUrl' => route('cashier.pending'),
+            'orders'          => $orders,
+            'commande'        => $commande,
+            'totalAmount'     => $totalAmount,
+            'netAmount'       => $netAmount,
+            'discountPercent' => $discountPct,
+            'discountAmount'  => $discountAmt,
+            'paymentMethod'   => $paymentMethod,
+            'changeAmount'    => $changeAmount,
+            'redirectUrl'     => route('cashier.pending'),
         ]);
     }
 
@@ -316,6 +349,96 @@ class CashierPosController extends Controller
         $totalRevenue = $query->sum('total');
 
         return view('cashier.history', compact('orders', 'totalRevenue'));
+    }
+
+    /**
+     * Admin ticket center for cashier revenues.
+     */
+    public function tickets(Request $request)
+    {
+        $dateStart = $request->input('date_start', today()->toDateString());
+        $dateEnd = $request->input('date_end', today()->toDateString());
+
+        if ($dateStart > $dateEnd) {
+            [$dateStart, $dateEnd] = [$dateEnd, $dateStart];
+        }
+
+        $query = $this->paidOrdersByDateRange($dateStart, $dateEnd);
+        $totalRevenue = (float) (clone $query)->sum('total');
+        $salesCount = (int) (clone $query)->count();
+
+        return view('cashier.tickets', compact('dateStart', 'dateEnd', 'totalRevenue', 'salesCount'));
+    }
+
+    /**
+     * Print a daily summary or detailed ticket.
+     */
+    public function printTicket(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'type' => 'required|in:summary,detailed',
+        ]);
+
+        $ticketDate = Carbon::parse($validated['date'])->toDateString();
+        $ticketType = $validated['type'];
+
+        $query = $this->paidOrdersByDateRange($ticketDate, $ticketDate)
+            ->with(['details.produit', 'table', 'user'])
+            ->orderBy('updated_at');
+
+        $orders = $query->get();
+        $totalRevenue = (float) $orders->sum('total');
+        $productSales = $ticketType === 'detailed'
+            ? $this->buildProductSalesSummary($orders)
+            : collect();
+
+        return view('cashier.ticket-print', [
+            'orders' => $orders,
+            'productSales' => $productSales,
+            'ticketType' => $ticketType,
+            'ticketDate' => $ticketDate,
+            'totalRevenue' => $totalRevenue,
+        ]);
+    }
+
+    /**
+     * Export revenue report to PDF (date range + detail mode).
+     */
+    public function exportTicketsPdf(Request $request)
+    {
+        $validated = $request->validate([
+            'date_start' => 'required|date',
+            'date_end' => 'required|date|after_or_equal:date_start',
+            'type' => 'required|in:summary,detailed',
+        ]);
+
+        $dateStart = Carbon::parse($validated['date_start'])->toDateString();
+        $dateEnd = Carbon::parse($validated['date_end'])->toDateString();
+        $reportType = $validated['type'];
+
+        $baseQuery = $this->paidOrdersByDateRange($dateStart, $dateEnd);
+        $totalRevenue = (float) (clone $baseQuery)->sum('total');
+        $salesCount = (int) (clone $baseQuery)->count();
+
+        $orders = $reportType === 'detailed'
+            ? (clone $baseQuery)->with(['details.produit', 'table', 'user'])->orderBy('updated_at')->get()
+            : collect();
+        $productSales = $reportType === 'detailed'
+            ? $this->buildProductSalesSummary($orders)
+            : collect();
+
+        $pdf = Pdf::loadView('cashier.ticket-report-pdf', [
+            'dateStart' => $dateStart,
+            'dateEnd' => $dateEnd,
+            'reportType' => $reportType,
+            'salesCount' => $salesCount,
+            'totalRevenue' => $totalRevenue,
+            'orders' => $orders,
+            'productSales' => $productSales,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download("rapport-caissier-{$dateStart}-{$dateEnd}.pdf");
     }
 
     /**
@@ -349,37 +472,80 @@ class CashierPosController extends Controller
 
     protected function buildPaymentAllocations($paymentOrders, array $paymentData): array
     {
-        $allocations = [];
+        $allocations   = [];
         $paymentMethod = $paymentData['payment_method'];
+        $discountPct   = (float) ($paymentData['discount_percent'] ?? 0);
+
+        // Helper: compute the discounted net total for a single order line
+        $netForOrder = function (Commande $order) use ($discountPct): float {
+            $raw        = (float) $order->total;
+            $discountAmt = round($raw * $discountPct / 100, 2);
+            return round($raw - $discountAmt, 2);
+        };
 
         if ($paymentMethod !== 'mixte') {
             foreach ($paymentOrders as $paymentOrder) {
+                $net         = $netForOrder($paymentOrder);
+                $discountAmt = round((float) $paymentOrder->total - $net, 2);
                 $allocations[$paymentOrder->id] = [
-                    'payment_amount' => (float) $paymentOrder->total,
+                    'payment_amount'   => $net,
+                    'discount_percent' => $discountPct,
+                    'discount_amount'  => $discountAmt,
                 ];
             }
 
             return $allocations;
         }
 
+        // Mixte: split the submitted cash/card amounts proportionally across orders,
+        // but cap each order at its discounted net total.
         $remainingCash = (float) ($paymentData['cash_amount'] ?? 0);
         $remainingCard = (float) ($paymentData['card_amount'] ?? 0);
 
         foreach ($paymentOrders as $paymentOrder) {
-            $orderTotal = (float) $paymentOrder->total;
-            $cashPortion = min($remainingCash, $orderTotal);
+            $net         = $netForOrder($paymentOrder);
+            $discountAmt = round((float) $paymentOrder->total - $net, 2);
+
+            $cashPortion = round(min($remainingCash, $net), 2);
             $remainingCash -= $cashPortion;
 
-            $cardPortion = round($orderTotal - $cashPortion, 2);
+            $cardPortion = round($net - $cashPortion, 2);
             $remainingCard -= $cardPortion;
 
             $allocations[$paymentOrder->id] = [
-                'payment_amount' => $orderTotal,
-                'cash_amount' => $cashPortion,
-                'card_amount' => $cardPortion,
+                'payment_amount'   => $net,
+                'cash_amount'      => $cashPortion,
+                'card_amount'      => $cardPortion,
+                'discount_percent' => $discountPct,
+                'discount_amount'  => $discountAmt,
             ];
         }
 
         return $allocations;
+    }
+
+    protected function paidOrdersByDateRange(string $dateStart, string $dateEnd)
+    {
+        return Commande::kitchen()
+            ->payee()
+            ->whereDate('updated_at', '>=', $dateStart)
+            ->whereDate('updated_at', '<=', $dateEnd);
+    }
+
+    protected function buildProductSalesSummary($orders)
+    {
+        $orderIds = $orders->pluck('id')->filter()->values();
+
+        if ($orderIds->isEmpty()) {
+            return collect();
+        }
+
+        return CommandeDetail::query()
+            ->selectRaw('produit_id, SUM(quantity) as total_quantity, SUM(quantity * price) as total_amount')
+            ->whereIn('commande_id', $orderIds)
+            ->with('produit:id,name')
+            ->groupBy('produit_id')
+            ->orderByDesc('total_quantity')
+            ->get();
     }
 }
