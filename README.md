@@ -57,3 +57,33 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Archive Pipeline Testing (CI Ready)
+
+Run tests inside the app container so the testing database host (`postgres`) resolves correctly.
+
+### Run all archive integration tests
+
+```bash
+docker compose exec app php artisan test tests/Integration/Archiving
+```
+
+### Run only historiques archive command tests
+
+```bash
+docker compose exec app php artisan test tests/Integration/Archiving/ArchiveMonthlyDataCommandTest.php
+```
+
+### Run only financial archive tests
+
+```bash
+docker compose exec app php artisan test \
+	tests/Integration/Archiving/ArchiveMonthlyFinancialDataCommandTest.php \
+	tests/Integration/Archiving/VerifyFinancialArchiveCommandTest.php
+```
+
+### Suggested CI command
+
+```bash
+docker compose exec app php artisan test tests/Integration/Archiving --stop-on-failure
+```
