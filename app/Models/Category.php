@@ -8,6 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
+/**
+ * نموذج الفئة (Category)
+ *
+ * يصنف المنتجات ضمن فئات رئيسية (مثل: مشروبات، وجبات، حلويات).
+ * كل فئة يمكنها احتواء عدد غير محدود من المنتجات (Produit).
+ * تدعم صورة مخصصة مع احتياطي تلقائي من Unsplash.
+ */
 class Category extends Model
 {
     use HasFactory, LogsHistorique;

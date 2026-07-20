@@ -10,6 +10,19 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 
+/**
+ * DashboardController - لوحة تحكم المدير
+ *
+ * يوفر بيانات إحصائية شاملة ومُخزَّنة مؤقتاً (5 دقائق) تشمل:
+ * - مبيعات اليوم والمعاملات
+ * - المنتجات ذات المخزون المنخفض
+ * - الطلبيات المعلقة من الموردين
+ * - تحليلات أسبوعية وشهرية
+ * - أفضل المنتجات مبيعاً وتوزيع المبيعات حسب الفئات
+ * - توزيع طرق الدفع ومبيعات كل ساعة
+ *
+ * ملاحظة: جميع البيانات تعمل على قاعدة SQLite عبر DATE_TRUNC
+ */
 class DashboardController extends Controller
 {
     private const DASHBOARD_CACHE_TTL_SECONDS = 300;

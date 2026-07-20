@@ -8,6 +8,21 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * نموذج المبيعة (Vente)
+ *
+ * يسجل كل عملية بيع في نقطة البيع (POS) أو على الطاولة.
+ * دورة الحياة: pending → paid | cancelled
+ *
+ * تحتوي كل مبيعة على:
+ * - تفاصيل المنتجات (VenteDetail) مع الكميات والأسعار
+ * - المدفوعات المرتبطة (Paiement)
+ * - ربط اختياري بطاولة ونادل
+ *
+ * @property string      $status         حالة المبيعة: pending | paid | cancelled
+ * @property string|null $payment_method طريقة الدفع: cash | carte | mixte
+ * @property float       $total          الإجمالي الكلي للمبيعة
+ */
 class Vente extends Model
 {
     use HasFactory, LogsHistorique;

@@ -7,6 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * نموذج المورد (Fournisseur)
+ *
+ * يسجل موردي البضائع والمواد الخام للمطعم.
+ * كل مورد مرتبط بطلبيات شراء (Commande نوع supplier).
+ */
 class Fournisseur extends Model
 {
     use HasFactory, LogsHistorique;

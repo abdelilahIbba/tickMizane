@@ -98,10 +98,12 @@ class PaymentProcessingTest extends TestCase
             ]);
 
         $response->assertRedirect(route('cashier.receipt.print', [
-            'commandeId' => $this->order->id,
-            'order_ids' => $this->order->id,
-            'payment_method' => 'cash',
-            'change' => 50,
+            'commandeId'       => $this->order->id,
+            'order_ids'        => $this->order->id,
+            'payment_method'   => 'cash',
+            'change'           => 50,
+            'discount_percent' => 0,
+            'discount_amount'  => 0,
         ]));
         $response->assertSessionHas('success');
 
@@ -130,10 +132,12 @@ class PaymentProcessingTest extends TestCase
             ]);
 
         $response->assertRedirect(route('cashier.receipt.print', [
-            'commandeId' => $this->order->id,
-            'order_ids' => $this->order->id,
-            'payment_method' => 'carte',
-            'change' => 0,
+            'commandeId'       => $this->order->id,
+            'order_ids'        => $this->order->id,
+            'payment_method'   => 'carte',
+            'change'           => 0,
+            'discount_percent' => 0,
+            'discount_amount'  => 0,
         ]));
         $response->assertSessionHas('success');
 
@@ -157,10 +161,12 @@ class PaymentProcessingTest extends TestCase
             ]);
 
                 $response->assertRedirect(route('cashier.receipt.print', [
-                    'commandeId' => $this->order->id,
-                    'order_ids' => $this->order->id,
-                    'payment_method' => 'mixte',
-                    'change' => 0,
+                    'commandeId'       => $this->order->id,
+                    'order_ids'        => $this->order->id,
+                    'payment_method'   => 'mixte',
+                    'change'           => 0,
+                    'discount_percent' => 0,
+                    'discount_amount'  => 0,
                 ]));
         $response->assertSessionHas('success');
 

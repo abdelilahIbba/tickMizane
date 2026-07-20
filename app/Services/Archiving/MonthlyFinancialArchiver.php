@@ -7,6 +7,21 @@ use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
+/**
+ * MonthlyFinancialArchiver - أرشفة البيانات المالية الشهرية
+ *
+ * مسؤول عن نقل السجلات المالية القديمة والمغلقة
+ * من الجداول الرئيسية (ventes, commandes, paiements)
+ * إلى مخطط الأرشيف (archive.*) بطريقة آمنة.
+ *
+ * الميزات:
+ * - معالجة الدفعات (batch) لتجنب إشباع الذاكرة
+ * - التحقق من نجاح النقل قبل الحذف (Verify before delete)
+ * - وضع المحاكاة (dry_run) لاستعراض ما سيُحذف
+ * - استخدام المعاملات (DB::transaction) لضمان سلامة البيانات
+ *
+ * يعمل ضمن ArchiveMonthlyFinancialDataJob المجدول شهرياً
+ */
 class MonthlyFinancialArchiver
 {
     private const VENTE_CLOSED = ['paid', 'cancelled'];

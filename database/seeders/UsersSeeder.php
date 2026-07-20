@@ -13,8 +13,15 @@ class UsersSeeder extends Seeder
         $users = [
             // ── Administration ────────────────────────────────────────────
             [
-                'name'     => 'Hassan Alaoui',
-                'username' => 'admin',
+                'name'     => 'Omar',
+                'username' => 'omar',
+                'password' => Hash::make('Admin@2024'),
+                'role'     => 'admin',
+                'status'   => 'active',
+            ],
+            [
+                'name'     => 'Hisham',
+                'username' => 'hisham',
                 'password' => Hash::make('Admin@2024'),
                 'role'     => 'admin',
                 'status'   => 'active',
@@ -22,14 +29,14 @@ class UsersSeeder extends Seeder
 
             // ── Caissiers ─────────────────────────────────────────────────
             [
-                'name'     => 'Fatima Zahra Benali',
+                'name'     => 'Fatima Zahra',
                 'username' => 'caissier1',
                 'password' => Hash::make('Caisse@123'),
                 'role'     => 'caissier',
                 'status'   => 'active',
             ],
             [
-                'name'     => 'Khadija Moussaoui',
+                'name'     => 'Khadija',
                 'username' => 'caissier2',
                 'password' => Hash::make('Caisse@123'),
                 'role'     => 'caissier',
@@ -38,22 +45,15 @@ class UsersSeeder extends Seeder
 
             // ── Serveurs ──────────────────────────────────────────────────
             [
-                'name'     => 'Youssef El Fassi',
-                'username' => 'serveur1',
+                'name'     => 'Mohamed',
+                'username' => 'mohamed',
                 'password' => Hash::make('Serveur@123'),
                 'role'     => 'serveur',
                 'status'   => 'active',
             ],
             [
-                'name'     => 'Amine Berrada',
-                'username' => 'serveur2',
-                'password' => Hash::make('Serveur@123'),
-                'role'     => 'serveur',
-                'status'   => 'active',
-            ],
-            [
-                'name'     => 'Nadia Tazi',
-                'username' => 'serveur3',
+                'name'     => 'Asmaa',
+                'username' => 'asmaa',
                 'password' => Hash::make('Serveur@123'),
                 'role'     => 'serveur',
                 'status'   => 'active',
@@ -61,7 +61,7 @@ class UsersSeeder extends Seeder
         ];
 
         foreach ($users as $user) {
-            User::create($user);
+            User::updateOrCreate(['username' => $user['username']], $user);
         }
 
         $this->command->info('✔ UsersSeeder : ' . count($users) . ' utilisateurs créés.');

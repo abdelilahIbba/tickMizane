@@ -8,6 +8,25 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * نموذج الطلبية (Commande)
+ *
+ * يدير نوعين من الطلبيات في النظام:
+ *
+ * 1. طلبيات المورد (type = 'supplier'):
+ *    - تُنشأ بواسطة المدير لطلب البضاعة من الموردين
+ *    - دورة الحياة: pending → received
+ *    - عند الاستلام يتم تحديث المخزون تلقائياً
+ *
+ * 2. طلبيات المطبخ (type = 'kitchen'):
+ *    - تُنشأ بواسطة النادل أو العميل مباشرة
+ *    - دورة الحياة: en_cuisine → en_preparation → pret → servi → payee
+ *    - تربط الطاولة بالنادل والمطبخ والصندوق
+ *
+ * @property string $status  الحالة الحالية للطلبية
+ * @property string $type    نوع الطلبية: supplier | kitchen
+ * @property float  $total   الإجمالي المحسوب من التفاصيل
+ */
 class Commande extends Model
 {
     use HasFactory, LogsHistorique;

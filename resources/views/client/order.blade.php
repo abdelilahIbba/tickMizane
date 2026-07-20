@@ -366,8 +366,13 @@
                         </div>
                         <div>
                             <label class="block text-slate-400 text-xs mb-1.5 font-medium">Numéro de chambre <span class="text-red-400">*</span></label>
-                            <input x-model="roomNumber" type="text" inputmode="numeric" placeholder="Ex: 204"
-                                   class="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl px-4 py-3 text-white font-bold outline-none transition-colors placeholder-slate-600 text-sm">
+                            <select x-model="roomNumber"
+                                    class="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl px-4 py-3 text-white font-bold outline-none transition-colors text-sm appearance-none cursor-pointer">
+                                <option value="" disabled selected class="text-slate-600">— Sélectionnez votre chambre —</option>
+                                @for($i = 1; $i <= 10; $i++)
+                                <option value="{{ $i }}" class="bg-slate-900 text-white">Chambre {{ $i }}</option>
+                                @endfor
+                            </select>
                         </div>
                     </div>
                 </template>

@@ -7,6 +7,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * CheckRole Middleware - التحقق من دور المستخدم
+ *
+ * يحمي المسارات بحيث لا يتمكن منها إلا الأدوار المحددة.
+ * يتحقق أيضاً من نشاط الحساب (active).
+ *
+ * السلوك:
+ * - المدير (admin): صلاحية كاملة لجميع المسارات
+ * - الصندوق (caissier): يُعاد لصفحة نقطة البيع
+ * - النادل (serveur): يُعاد لصفحة الطاولات
+ * - الحسابات المحظورة: تُسجّل خروجاً تلقائياً
+ */
 class CheckRole
 {
     /**

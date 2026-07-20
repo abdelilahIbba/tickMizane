@@ -129,14 +129,12 @@ class UserService
     }
 
     /**
-     * Delete user (soft).
+     * Delete user (hard delete).
      */
     public function deleteUser(User $user): bool
     {
         return DB::transaction(function () use ($user) {
-            // Deactivate instead of hard delete
-            $user->update(['status' => 'blocked']);
-
+            $user->delete();
             return true;
         });
     }

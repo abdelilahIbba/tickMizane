@@ -9,6 +9,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
+/**
+ * نموذج المنتج (Produit)
+ *
+ * يمثل كل منتج أو مادة قابلة للبيع في النظام.
+ * يربط المنتج بفئة (Category) ويتتبع:
+ * - سعر البيع (price_vente) وسعر الشراء (price_achat)
+ * - كمية المخزون (stock_quantity) ومستوى التنبيه (alert_stock)
+ * - هل يمر عبر المطبخ (kitchen_active)
+ *
+ * يحتوي على Scopes جاهزة للتصفية:
+ * - scopeActive()        : المنتجات النشطة فقط
+ * - scopeLowStock()      : المنتجات التي وصلت حد التنبيه
+ * - scopeKitchenActive() : المنتجات التي تُعدّ في المطبخ
+ *
+ * @property int    $stock_quantity الكمية الحالية في المخزون
+ * @property bool   $kitchen_active هل المنتج يُحضَّر في المطبخ
+ */
 class Produit extends Model
 {
     use HasFactory, LogsHistorique;

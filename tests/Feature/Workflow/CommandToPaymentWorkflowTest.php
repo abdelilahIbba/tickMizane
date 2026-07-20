@@ -67,6 +67,14 @@ class CommandToPaymentWorkflowTest extends TestCase
 
         $firstOrder = Commande::latest('id')->firstOrFail();
 
+        // Mark the first order as ready so storeOrder creates a new commande
+        // instead of merging into the still-active in-kitchen order.
+        $this->actingAs($admin)
+            ->post(route('kitchen.order.ready', $firstOrder))
+            ->assertRedirect(route('kitchen.index'));
+
+        $this->assertSame('pret', $firstOrder->fresh()->status);
+
         $secondResponse = $this->actingAs($waiter)
             ->postJson(route('waiter.order.store', $table), [
                 'items' => [
@@ -83,10 +91,7 @@ class CommandToPaymentWorkflowTest extends TestCase
         $this->assertSame($table->id, $firstOrder->fresh()->table_id);
         $this->assertSame($table->id, $secondOrder->fresh()->table_id);
 
-        $this->actingAs($admin)
-            ->post(route('kitchen.order.ready', $firstOrder))
-            ->assertRedirect(route('kitchen.index'));
-
+        // $firstOrder is already pret (marked ready above before placing the second order).
         $this->actingAs($admin)
             ->post(route('kitchen.order.ready', $secondOrder))
             ->assertRedirect(route('kitchen.index'));

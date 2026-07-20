@@ -9,6 +9,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
+/**
+ * نموذج الطاولة (Table)
+ *
+ * يدير طاولات المطعم ويتتبع حالتها في الوقت الفعلي:
+ * - free     : الطاولة فارغة وجاهزة للاستقبال
+ * - occupied : الطاولة مشغولة بزبائن ولها مبيعة جارية
+ *
+ * الوظائف الرئيسية:
+ * - ربط كل طاولة بنادل (serveur) وبمبيعة حالية (currentVente)
+ * - تتبع وقت الإشغال لحساب مدة الجلسة
+ * - إدارة المناطق (zones) لتنظيم قاعة المطعم
+ * - نقل الطلبية بين الطاولات عند الحاجة
+ *
+ * @property string      $status   حالة الطاولة: free | occupied
+ * @property string|null $zone     منطقة الطاولة (Salle, Terrasse, VIP ...)
+ * @property int         $places   عدد المقاعد
+ */
 class Table extends Model
 {
     use HasFactory, LogsHistorique;

@@ -1,12 +1,73 @@
 <x-layout.app title="Gestion des Utilisateurs">
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <!-- Header -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
+     x-data="{
+        deleteModal: false,
+        deleteForm: null,
+        deleteUserName: '',
+        openDelete(formId, userName) {
+            this.deleteForm = formId;
+            this.deleteUserName = userName;
+            this.deleteModal = true;
+        },
+        confirmDelete() {
+            if (this.deleteForm) {
+                document.getElementById(this.deleteForm).submit();
+            }
+        }
+     }">
+
+    {{-- ── Delete Confirmation Modal ─────────────────────────────── --}}
+    <div x-show="deleteModal"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style="display:none">
+        {{-- Backdrop --}}
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="deleteModal=false"></div>
+        {{-- Modal Card --}}
+        <div x-show="deleteModal"
+             x-transition:enter="ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             class="relative bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6 w-full max-w-sm z-10">
+            {{-- Icon --}}
+            <div class="flex items-center justify-center w-14 h-14 mx-auto mb-4 bg-red-500/15 border border-red-500/30 rounded-full">
+                <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            </div>
+            <h3 class="text-lg font-bold text-white text-center mb-1">Supprimer l'utilisateur</h3>
+            <p class="text-sm text-slate-400 text-center mb-1">Êtes-vous sûr de vouloir supprimer</p>
+            <p class="text-sm font-bold text-red-400 text-center mb-4" x-text="'« ' + deleteUserName + ' »'"></p>
+            <p class="text-xs text-slate-500 text-center mb-6">
+                Cette action est <span class="text-red-400 font-semibold">irréversible</span>.
+                Toutes les données liées seront supprimées.
+            </p>
+            <div class="flex gap-3">
+                <button @click="deleteModal=false"
+                        class="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-sm font-semibold transition-colors">
+                    Annuler
+                </button>
+                <button @click="confirmDelete()"
+                        class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-bold transition-colors shadow-lg shadow-red-600/20">
+                    Supprimer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ── Header ──────────────────────────────────────────────────── --}}
     <div class="flex justify-between items-center mb-6">
         <div>
             <h1 class="text-3xl font-bold text-white">Gestion des Utilisateurs</h1>
             <p class="text-gray-400 mt-1">Créer, modifier et gérer les comptes utilisateurs</p>
         </div>
-        <a href="{{ route('settings.users.create') }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+        <a href="{{ route('settings.users.create') }}"
+           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
@@ -14,7 +75,7 @@
         </a>
     </div>
 
-    <!-- Users Table -->
+    {{-- ── Users Table ──────────────────────────────────────────────── --}}
     <div class="bg-gray-900/50 backdrop-blur-sm rounded-lg border border-gray-800 shadow-lg overflow-hidden">
         <table class="min-w-full divide-y divide-gray-800">
             <thead class="bg-gray-950/50">
@@ -29,6 +90,7 @@
             <tbody class="divide-y divide-gray-800">
                 @forelse($users as $user)
                 <tr class="hover:bg-gray-800/30 transition-colors">
+                    {{-- User info --}}
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
                             <div class="w-10 h-10 flex-shrink-0 bg-blue-600 rounded-full flex items-center justify-center">
@@ -40,6 +102,7 @@
                             </div>
                         </div>
                     </td>
+                    {{-- Role --}}
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 py-1 text-xs font-semibold rounded-full
                             @if($user->role === 'admin') bg-purple-500/20 text-purple-400 border border-purple-500/30
@@ -49,6 +112,7 @@
                             {{ ucfirst($user->role) }}
                         </span>
                     </td>
+                    {{-- Status --}}
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 py-1 text-xs font-semibold rounded-full
                             @if($user->status === 'active') bg-green-500/20 text-green-400 border border-green-500/30
@@ -62,50 +126,69 @@
                         </span>
                         @endif
                     </td>
+                    {{-- Last login --}}
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                         {{ $user->last_login_at ? $user->last_login_at->diffForHumans() : 'Jamais' }}
                     </td>
+                    {{-- Actions --}}
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div class="flex justify-end gap-2">
-                            <a href="{{ route('settings.users.edit', $user) }}" class="text-blue-400 hover:text-blue-300" title="Modifier">
+                            {{-- Edit --}}
+                            <a href="{{ route('settings.users.edit', $user) }}"
+                               class="text-blue-400 hover:text-blue-300 transition-colors" title="Modifier">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                 </svg>
                             </a>
-                            <a href="{{ route('settings.permissions.show', $user) }}" class="text-purple-400 hover:text-purple-300" title="Permissions">
+                            {{-- Permissions --}}
+                            <a href="{{ route('settings.permissions.show', $user) }}"
+                               class="text-purple-400 hover:text-purple-300 transition-colors" title="Permissions">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                                 </svg>
                             </a>
-                            <a href="{{ route('settings.users.reset-password', $user) }}" class="text-yellow-400 hover:text-yellow-300" title="Réinitialiser mot de passe">
+                            {{-- Reset Password --}}
+                            <a href="{{ route('settings.users.reset-password', $user) }}"
+                               class="text-yellow-400 hover:text-yellow-300 transition-colors" title="Réinitialiser mot de passe">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
                                 </svg>
                             </a>
-                            @if($user->status === 'active' && $user->id !== auth()->id())
-                            <form action="{{ route('settings.users.deactivate', $user) }}" method="POST" class="inline">
-                                @csrf
-                                <button type="submit" class="text-orange-400 hover:text-orange-300" title="Désactiver" onclick="return confirm('Désactiver cet utilisateur?')">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
-                                    </svg>
-                                </button>
-                            </form>
-                            @elseif($user->status === 'blocked')
-                            <form action="{{ route('settings.users.activate', $user) }}" method="POST" class="inline">
-                                @csrf
-                                <button type="submit" class="text-green-400 hover:text-green-300" title="Activer">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
-                                </button>
-                            </form>
-                            @endif
+                            {{-- Activate / Deactivate --}}
                             @if($user->id !== auth()->id())
-                            <form action="{{ route('settings.users.destroy', $user) }}" method="POST" class="inline">
+                                @if($user->status === 'active')
+                                <form action="{{ route('settings.users.deactivate', $user) }}" method="POST" class="inline">
+                                    @csrf
+                                    <button type="submit"
+                                            class="text-orange-400 hover:text-orange-300 transition-colors" title="Désactiver">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                                @else
+                                <form action="{{ route('settings.users.activate', $user) }}" method="POST" class="inline">
+                                    @csrf
+                                    <button type="submit"
+                                            class="text-green-400 hover:text-green-300 transition-colors" title="Activer">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                                @endif
+                            @endif
+                            {{-- Delete (with modal) --}}
+                            @if($user->id !== auth()->id())
+                            <form id="delete-user-{{ $user->id }}"
+                                  action="{{ route('settings.users.destroy', $user) }}"
+                                  method="POST" class="inline">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="text-red-400 hover:text-red-300" title="Supprimer" onclick="return confirm('Supprimer cet utilisateur?')">
+                                <button type="button"
+                                        @click="openDelete('delete-user-{{ $user->id }}', '{{ addslashes($user->name) }}')"
+                                        class="text-red-400 hover:text-red-300 transition-colors"
+                                        title="Supprimer">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                     </svg>

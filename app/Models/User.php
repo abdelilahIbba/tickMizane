@@ -9,6 +9,19 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * نموذج المستخدم (User)
+ *
+ * يمثل مستخدمي نظام TechMizane ويشمل الأدوار التالية:
+ * - admin    : المدير العام مع صلاحيات كاملة
+ * - caissier : الصندوق مسؤول عن المدفوعات والمبيعات
+ * - serveur  : النادل مسؤول عن الطاولات والطلبات
+ *
+ * يدعم:
+ * - المصادقة عبر Laravel Sanctum (HasApiTokens)
+ * - تتبع الإجراءات تلقائياً عبر (LogsHistorique)
+ * - إدارة الصلاحيات الفردية عبر UserPermission
+ */
 class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasApiTokens, LogsHistorique;

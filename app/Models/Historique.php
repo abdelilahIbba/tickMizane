@@ -6,6 +6,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * نموذج السجل التاريخي (Historique)
+ *
+ * يتتبع جميع الإجراءات والتغييرات في النظام تلقائياً.
+ * يتم تعبئته عبر خاصية LogsHistorique
+ * التي تضاف إلى كل نموذج يحتاج لمراقبة التعديلات.
+ *
+ * يتضمن كل سجل:
+ * - من قام بالإجراء (user + role)
+ * - نوع الإجراء (create, update, delete)
+ * - اسم الجدول ومعرف السجل
+ * - القيم القديمة والجديدة (عند التعديل)
+ */
 class Historique extends Model
 {
     use HasFactory;

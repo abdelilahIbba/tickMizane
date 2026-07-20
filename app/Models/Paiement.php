@@ -7,6 +7,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * نموذج الدفعة (Paiement)
+ *
+ * يسجل كل عملية دفع في النظام. يمكن أن ترتبط ب:
+ * - مبيعة (Vente) في حالة الدفع عبر نقطة البيع POS
+ * - طلبية مطبخ (Commande) في حالة دفع الطاولة
+ *
+ * طرق الدفع المدعومة:
+ * - cash  : دفع نقدي
+ * - carte : بطاقة بنكية
+ * - mixte : دفع مختلط (نقد + بطاقة)
+ *
+ * @property float  $amount   قيمة الدفعة
+ * @property string $method   طريقة الدفع: cash | carte | mixte
+ * @property string $status   حالة الدفعة: pending | completed | failed
+ */
 class Paiement extends Model
 {
     use HasFactory, LogsHistorique;
