@@ -8,6 +8,18 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
+/**
+ * LowStockNotification - إشعار انخفاض المخزون
+ *
+ * يُرسل هذا الإشعار تلقائياً عندما يصل
+ * مخزون منتج إلى حد التنبيه أو دونه.
+ *
+ * قنوات التسليم:
+ * - database : يحفظ في جدول notifications لعرضه في الواجهة
+ * - mail     : يرسل بريداً إلكترونياً للمدير
+ *
+ * يحتوي على اسم المنتج والكمية الحالية وحد التنبيه
+ */
 class LowStockNotification extends Notification implements ShouldQueue
 {
     use Queueable;

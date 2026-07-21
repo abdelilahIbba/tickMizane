@@ -6,6 +6,26 @@ use App\Models\Historique;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 
+/**
+ * LogsHistorique Trait
+ *
+ * خاصية تُضاف إلى أي نموذج Eloquent لتتبع
+ * الإنشاء والتعديل والحذف تلقائياً.
+ *
+ * كيفية الاستخدام:
+ *   use App\Traits\LogsHistorique;
+ *   class MyModel extends Model {
+ *       use HasFactory, LogsHistorique;
+ *   }
+ *
+ * يسجل تلقائياً في جدول `historiques`:
+ * - إنشاء سجل (created)
+ * - تعديل سجل (updated) مع حفظ القيم القديمة والجديدة
+ * - حذف سجل (deleted)
+ *
+ * يمكن تخصيص المعرّف الوصفي
+ * بتجاوز دالة getHistoriqueIdentifier() في النموذج
+ */
 trait LogsHistorique
 {
     /**

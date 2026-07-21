@@ -7,6 +7,18 @@ use App\Models\UserPermission;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 
+/**
+ * PermissionService - خدمة إدارة الصلاحيات
+ *
+ * تدير نظام صلاحيات مخصص لكل مستخدم عبر جدول UserPermission.
+ * تسمح بضبط صلاحيات الوصول لكل وحدة (module) في النظام
+ * بشكل مستقل عن دور المستخدم.
+ *
+ * الوحدات المدعومة:
+ * pos, kitchen, waiter, cashier, inventory, reports, settings, users
+ *
+ * ملاحظة: المدير (admin) له صلاحية كاملة دائماً
+ */
 class PermissionService
 {
     /**

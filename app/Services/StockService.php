@@ -9,6 +9,17 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
+/**
+ * StockService - خدمة إدارة المخزون
+ *
+ * تدير جميع حركات المخزون في النظام:
+ * - زيادة المخزون (addStock): عند استلام طلبية مورد
+ * - خصم المخزون (reduceStock): عند إتمام مبيعة
+ * - تعديل يدوي (adjustStock): لتصحيح فوارق الجرد
+ *
+ * يسجل كل حركة في StockMovement ويرسل
+ * إشعارات المخزون المنخفض عبر LowStockNotification
+ */
 class StockService
 {
     /**

@@ -12,6 +12,17 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * TableController - إدارة طاولات المطعم
+ *
+ * يتولى عمليات CRUD وإدارة حالات طاولات المطعم:
+ * - عرض جميع الطاولات مع إحصائيات الإشغال والإيراد
+ * - إشغال وتحرير الطاولة
+ * - تحويل طلبية بين الطاولات
+ * - تعيين نادل لطاولة
+ * - تحصيل الدفع (cashout) عبر PaymentService
+ * - API لواجهة تحليلات الطاولات
+ */
 class TableController extends Controller
 {
     /**

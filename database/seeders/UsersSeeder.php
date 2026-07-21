@@ -6,6 +6,16 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
+/**
+ * UsersSeeder - تهيئة بيانات المستخدمين
+ *
+ * ينشئ حسابات المستخدمين الافتراضيين للنظام:
+ * - مديران (admin): omar, hisham
+ * - صناديق (caissier): caissier1, caissier2
+ * - نادلون (serveur): mohamed, asmaa
+ *
+ * يستخدم updateOrCreate لتجنب التكرار عند إعادة التشغيل
+ */
 class UsersSeeder extends Seeder
 {
     public function run(): void

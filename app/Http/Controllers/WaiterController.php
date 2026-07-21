@@ -13,6 +13,18 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
+/**
+ * WaiterController - واجهة النادل (Tablet)
+ *
+ * يدير جميع عمليات النادل عبر واجهة التابلت:
+ * - عرض لوحة تحكم النادل مع حالة الطاولات
+ * - إنشاء طلبيات مطبخ جديدة أو إضافة عناصر لطلبية قائمة
+ * - إلغاء طلبية بعد التحقق من PIN المدير
+ * - نقل طلبية بين الطاولات
+ * - تأكيد الخروج من المرحلة لمرحلة التسوية
+ *
+ * يستخدم OrderService لجميع منطق الأعمال
+ */
 class WaiterController extends Controller
 {
     protected OrderService $orderService;

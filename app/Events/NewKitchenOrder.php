@@ -10,6 +10,19 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * NewKitchenOrder - حدث طلبية مطبخ جديدة
+ *
+ * يُطلق هذا الحدث عند إنشاء طلبية جديدة تحتاج تحضيراً في المطبخ.
+ * يُبث عبر قناة 'kitchen' باستخدام Laravel Echo
+ * ليستقبله شاشة المطبخ فوراً.
+ *
+ * البيانات المبثوثة:
+ * - معرف الطلبية ورقم الطاولة واسم النادل
+ * - عدد العناصر ووقت الإنشاء
+ *
+ * اسم الحدث المبث: 'new-order'
+ */
 class NewKitchenOrder implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;

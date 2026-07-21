@@ -8,6 +8,19 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * ArchiveMonthlyDataJob - مهمة أرشفة سجلات الأحداث الشهرية
+ *
+ * مهمة مجدولة تُشغَّل شهرياً لأرشفة جدول historiques
+ * القديمة إلى جدول archive_historiques.
+ *
+ * الإعدادات:
+ * - tries   = 3   : إعادة المحاولة ثلاث مرات عند الفشل
+ * - timeout = 1200: المهلة 20 دقيقة
+ * - backoff  = 60, 300, 900 ثانية بين المحاولات
+ *
+ * @see MonthlyHistoriqueArchiver
+ */
 class ArchiveMonthlyDataJob implements ShouldQueue
 {
     use Queueable;

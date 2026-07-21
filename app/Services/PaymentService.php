@@ -7,6 +7,18 @@ use App\Models\Vente;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * PaymentService - خدمة معالجة المدفوعات
+ *
+ * تتولى معالجة عمليات الدفع للمبيعات (Vente)،
+ * وتعمل بشكل منفصل عن دفع طلبيات المطبخ الذي يديره OrderService.
+ *
+ * الوظائف الرئيسية:
+ * - معالجة الدفع وتحديث حالة المبيعة إلى paid
+ * - تحرير الطاولة عند إتمام الدفع
+ * - حساب الباقي من الدفعات الجزئية
+ * - عرض إحصائيات المدفوعات
+ */
 class PaymentService
 {
     /**

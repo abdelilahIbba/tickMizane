@@ -11,6 +11,19 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 
+/**
+ * CashierPosController - واجهة صندوق طلبيات المطبخ
+ *
+ * يدير تحصيل المدفوعات لطلبيات المطبخ (kitchen orders).
+ * يعمل بجانب الصندوق العادي (PosController) لكن مخصصاً
+ * لطلبيات الطاولات والطلبيات المرسلة من النادل.
+ *
+ * الوظائف الرئيسية:
+ * - عرض لوحة التحصيل مع الطلبيات المعلقة
+ * - معالجة الدفع (cash/carte/mixte) بتخفيضات
+ * - طباعة إيصالات PDF عبر Barryvdh DomPDF
+ * - تجميع طلبيات نفس الطاولة في عملية دفع واحدة
+ */
 class CashierPosController extends Controller
 {
     protected OrderService $orderService;
