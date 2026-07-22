@@ -94,6 +94,7 @@ services:
       - ./database:/app/database
       - ./tests:/app/tests
       - ./phpunit.xml:/app/phpunit.xml:ro
+      - ./storage/app/public:/app/storage/app/public
       - app_storage_framework:/app/storage/framework
       - app_bootstrap_cache:/app/bootstrap/cache
       - app_logs:/app/storage/logs
@@ -170,6 +171,7 @@ services:
       - "${HTTPS_PORT:-8443}:443"
     volumes:
       - ./public:/app/public:ro
+      - ./storage/app/public:/app/storage/app/public:ro
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
       - ./docker/nginx/ssl:/etc/nginx/ssl:ro
     networks:

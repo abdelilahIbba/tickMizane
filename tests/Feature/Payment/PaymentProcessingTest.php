@@ -102,6 +102,8 @@ class PaymentProcessingTest extends TestCase
             'order_ids' => $this->order->id,
             'payment_method' => 'cash',
             'change' => 50,
+            'discount_percent' => 0,
+            'discount_amount' => 0,
         ]));
         $response->assertSessionHas('success');
 
@@ -134,6 +136,8 @@ class PaymentProcessingTest extends TestCase
             'order_ids' => $this->order->id,
             'payment_method' => 'carte',
             'change' => 0,
+            'discount_percent' => 0,
+            'discount_amount' => 0,
         ]));
         $response->assertSessionHas('success');
 
@@ -161,6 +165,8 @@ class PaymentProcessingTest extends TestCase
                     'order_ids' => $this->order->id,
                     'payment_method' => 'mixte',
                     'change' => 0,
+                    'discount_percent' => 0,
+                    'discount_amount' => 0,
                 ]));
         $response->assertSessionHas('success');
 
@@ -245,6 +251,34 @@ class PaymentProcessingTest extends TestCase
     }
 
     #[Test]
+    public function stale_zero_order_total_is_reconciled_from_details_before_settlement()
+    {
+        $this->order->update(['total' => 0]);
+
+        $pendingResponse = $this->actingAs($this->cashier)
+            ->get(route('cashier.pending'));
+
+        $pendingResponse->assertStatus(200)
+            ->assertSee('150.00 DH');
+
+        $paymentResponse = $this->actingAs($this->cashier)
+            ->post(route('cashier.process-payment', $this->order), [
+                'payment_method' => 'cash',
+                'amount_received' => 200.00,
+            ]);
+
+        $paymentResponse->assertSessionHas('success');
+
+        $this->assertEquals('payee', $this->order->fresh()->status);
+        $this->assertEquals('150.00', $this->order->fresh()->total);
+        $this->assertDatabaseHas('paiements', [
+            'commande_id' => $this->order->id,
+            'method' => 'cash',
+            'amount' => 150.00,
+        ]);
+    }
+
+    #[Test]
     public function cash_payment_calculates_correct_change()
     {
         
@@ -261,7 +295,7 @@ class PaymentProcessingTest extends TestCase
     }
 
     #[Test]
-    public function only_cashiers_can_process_payments()
+    public function serveur_can_process_payments_from_settlement_page()
     {
         
         /** @var User $waiter */
@@ -276,9 +310,8 @@ class PaymentProcessingTest extends TestCase
                 'amount_received' => 200.00,
             ]);
 
-        // Should be unauthorized - gets redirected
-        $response->assertStatus(302);
-        $response->assertRedirect(route('tables.index'));
+        $response->assertSessionHas('success');
+        $this->assertEquals('payee', $this->order->fresh()->status);
     }
 
     #[Test]

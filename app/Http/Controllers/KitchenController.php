@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Commande;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class KitchenController extends Controller
@@ -62,6 +63,10 @@ class KitchenController extends Controller
      */
     public function updateStatus(Request $request, Commande $commande)
     {
+        if (Auth::user()?->isServeur()) {
+            abort(403, 'Accès refusé. Les serveurs ont un accès lecture seule sur cet écran.');
+        }
+
         $validated = $request->validate([
             'status' => 'required|in:en_cuisine,en_preparation,pret,servi,annule',
         ]);
@@ -97,6 +102,10 @@ class KitchenController extends Controller
      */
     public function markReady(Request $request, Commande $commande)
     {
+        if (Auth::user()?->isServeur()) {
+            abort(403, 'Accès refusé. Les serveurs ont un accès lecture seule sur cet écran.');
+        }
+
         try {
             $this->orderService->updateKitchenOrderStatus($commande, 'pret');
 
@@ -129,6 +138,10 @@ class KitchenController extends Controller
      */
     public function markServed(Commande $commande)
     {
+        if (Auth::user()?->isServeur()) {
+            abort(403, 'Accès refusé. Les serveurs ont un accès lecture seule sur cet écran.');
+        }
+
         try {
             $this->orderService->updateKitchenOrderStatus($commande, 'servi');
 

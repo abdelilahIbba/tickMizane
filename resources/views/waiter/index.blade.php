@@ -1,5 +1,5 @@
 <x-layout.app title="Réception des commandes">
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{ tab: '{{ request('tab', 'tables') }}' }">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{ tab: '{{ request('tab', 'tables') }}', selectedZone: 'all' }">
 
     {{-- Header --}}
     <div class="flex items-center justify-between mb-6">
@@ -7,13 +7,19 @@
             <h1 class="text-2xl font-bold text-white">Réception des commandes</h1>
             <p class="text-gray-400 text-sm mt-0.5">Tables & commandes clients en cours</p>
         </div>
-        <a href="{{ route('waiter.orders') }}"
-           class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-semibold transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-            </svg>
-            Historique
-        </a>
+        <div class="flex items-center gap-2">
+            <a href="{{ route('waiter.settings.zones') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl text-sm font-semibold transition-colors">
+                Zones
+            </a>
+            <a href="{{ route('waiter.orders') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-semibold transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                Historique
+            </a>
+        </div>
     </div>
 
     {{-- Tabs --}}
@@ -69,15 +75,36 @@
             <div class="flex items-center gap-2"><div class="w-3 h-3 bg-amber-500 rounded-full"></div><span class="text-xs text-slate-400">Réservée</span></div>
         </div>
 
+        <div class="flex flex-wrap gap-2 mb-5">
+            <button @click="selectedZone = 'all'"
+                    :class="selectedZone === 'all' ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 border border-slate-700 text-slate-300 hover:text-white'"
+                    class="px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
+                Toutes les zones
+            </button>
+            @foreach($zones as $zone)
+                <button @click="selectedZone = '{{ (string) $zone->id }}'"
+                        :class="selectedZone === '{{ (string) $zone->id }}' ? 'bg-amber-500 text-slate-900' : 'bg-slate-800 border border-slate-700 text-slate-300 hover:text-white'"
+                        class="px-3 py-2 rounded-xl text-xs font-semibold transition-colors">
+                    {{ $zone->name }}
+                </button>
+            @endforeach
+        </div>
+
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             @foreach($tables as $table)
+            @php
+                $displayNumber = preg_match('/(\d+)$/', (string) $table->name, $matches)
+                    ? (int) $matches[1]
+                    : $table->numero;
+            @endphp
             <a href="{{ route('waiter.table.order', $table) }}"
+               x-show="selectedZone === 'all' || selectedZone === '{{ $table->zone_id !== null ? (string) $table->zone_id : '' }}'"
                class="block bg-slate-900 rounded-2xl shadow hover:shadow-lg transition-all duration-200 p-5 border-2 hover:scale-105 transform
                       @if($table->status === 'free') border-emerald-500/40 hover:border-emerald-500
                       @elseif($table->status === 'occupied') border-red-500/40 hover:border-red-500
                       @else border-amber-500/40 hover:border-amber-500 @endif">
                 <div class="flex justify-between items-start mb-3">
-                    <span class="text-2xl font-extrabold text-white">{{ $table->numero ?? $table->name }}</span>
+                    <span class="text-2xl font-extrabold text-white">{{ $displayNumber }}</span>
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold
                                  @if($table->status === 'free') bg-emerald-500/20 text-emerald-400 border border-emerald-500/30
                                  @elseif($table->status === 'occupied') bg-red-500/20 text-red-400 border border-red-500/30
@@ -85,7 +112,7 @@
                         @if($table->status === 'free') Libre @elseif($table->status === 'occupied') Occupée @else Réservée @endif
                     </span>
                 </div>
-                <p class="text-xs text-slate-500 truncate">{{ $table->name }}</p>
+                <p class="text-xs text-slate-500 truncate">{{ $table->name }} @if($table->zone) • {{ $table->zone }} @endif</p>
                 <div class="mt-3 text-xs font-semibold
                             @if($table->status === 'free') text-emerald-400
                             @elseif($table->status === 'occupied') text-red-400

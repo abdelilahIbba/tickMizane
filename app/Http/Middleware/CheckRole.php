@@ -75,8 +75,8 @@ class CheckRole
 
         // Redirect to role-appropriate page
         $redirectRoute = match ($role) {
-            'caissier' => 'pos.index',
-            'serveur' => 'tables.index',
+            'caissier' => 'kitchen.index',
+            'serveur' => 'waiter.index',
             default => 'login',
         };
 

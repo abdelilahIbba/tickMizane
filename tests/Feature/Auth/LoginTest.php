@@ -53,12 +53,12 @@ class LoginTest extends TestCase
     public function admin_can_login_with_pin_code()
     {
         $admin = User::factory()->create([
+            'password' => bcrypt('009988'),
             'role' => 'admin',
             'status' => 'active',
         ]);
 
         $response = $this->post(route('login.submit'), [
-            'login_mode' => 'admin',
             'password' => '009988', // Admin PIN
         ]);
 
@@ -75,7 +75,6 @@ class LoginTest extends TestCase
         ]);
 
         $response = $this->post(route('login.submit'), [
-            'login_mode' => 'admin',
             'password' => '000000', // Wrong PIN
         ]);
 
@@ -87,7 +86,6 @@ class LoginTest extends TestCase
     public function admin_login_creates_bootstrap_admin_when_none_exists_and_pin_is_valid()
     {
         $response = $this->post(route('login.submit'), [
-            'login_mode' => 'admin',
             'password' => '009988',
         ]);
 
@@ -100,58 +98,52 @@ class LoginTest extends TestCase
     }
 
     #[Test]
-    public function caissier_can_login_with_username_and_password()
+    public function caissier_can_login_with_pin_and_reach_kitchen()
     {
         $caissier = User::factory()->create([
             'username' => 'cashier01',
-            'password' => bcrypt('password123'),
+            'password' => bcrypt('123456'),
             'role' => 'caissier',
             'status' => 'active',
         ]);
 
         $response = $this->post(route('login.submit'), [
-            'login_mode' => 'staff',
-            'username' => 'cashier01',
-            'password' => 'password123',
+            'password' => '123456',
         ]);
 
-        $response->assertRedirect(route('pos.index'));
+        $response->assertRedirect(route('kitchen.index'));
         $this->assertAuthenticatedAs($caissier);
     }
 
     #[Test]
-    public function serveur_can_login_with_username_and_password()
+    public function serveur_can_login_with_pin_and_reach_waiter()
     {
         $serveur = User::factory()->create([
             'username' => 'waiter01',
-            'password' => bcrypt('password123'),
+            'password' => bcrypt('112233'),
             'role' => 'serveur',
             'status' => 'active',
         ]);
 
         $response = $this->post(route('login.submit'), [
-            'login_mode' => 'staff',
-            'username' => 'waiter01',
-            'password' => 'password123',
+            'password' => '112233',
         ]);
 
-        $response->assertRedirect('/tables');
+        $response->assertRedirect(route('waiter.index'));
         $this->assertAuthenticatedAs($serveur);
     }
 
     #[Test]
-    public function staff_cannot_login_with_wrong_password()
+    public function user_cannot_login_with_wrong_pin()
     {
         User::factory()->create([
             'username' => 'cashier01',
-            'password' => bcrypt('password123'),
+            'password' => bcrypt('123456'),
             'role' => 'caissier',
             'status' => 'active',
         ]);
 
         $response = $this->post(route('login.submit'), [
-            'login_mode' => 'staff',
-            'username' => 'cashier01',
             'password' => 'wrongpassword',
         ]);
 
@@ -160,15 +152,13 @@ class LoginTest extends TestCase
     }
 
     #[Test]
-    public function staff_cannot_login_with_invalid_username()
+    public function unknown_pin_cannot_login()
     {
         $response = $this->post(route('login.submit'), [
-            'login_mode' => 'staff',
-            'username' => 'nonexistent',
             'password' => 'password123',
         ]);
 
-        $response->assertSessionHasErrors('username');
+        $response->assertSessionHasErrors('password');
         $this->assertGuest();
     }
 
@@ -177,59 +167,43 @@ class LoginTest extends TestCase
     {
         User::factory()->create([
             'username' => 'blocked01',
-            'password' => bcrypt('password123'),
+            'password' => bcrypt('556677'),
             'role' => 'caissier',
             'status' => 'blocked',
         ]);
 
         $response = $this->post(route('login.submit'), [
-            'login_mode' => 'staff',
-            'username' => 'blocked01',
-            'password' => 'password123',
+            'password' => '556677',
         ]);
 
-        $response->assertSessionHasErrors('username');
+        $response->assertSessionHasErrors('password');
         $this->assertGuest();
     }
 
     #[Test]
-    public function admin_user_cannot_login_through_staff_mode()
+    public function admin_user_can_login_with_hashed_pin()
     {
-        User::factory()->create([
+        $admin = User::factory()->create([
             'username' => 'admin',
-            'password' => bcrypt('password123'),
+            'password' => bcrypt('445566'),
             'role' => 'admin',
             'status' => 'active',
         ]);
 
         $response = $this->post(route('login.submit'), [
-            'login_mode' => 'staff',
-            'username' => 'admin',
-            'password' => 'password123',
+            'password' => '445566',
         ]);
 
-        $response->assertSessionHasErrors('username');
-        $this->assertGuest();
+        $response->assertRedirect(route('dashboard'));
+        $this->assertAuthenticatedAs($admin);
     }
 
     #[Test]
-    public function login_validates_required_fields_for_staff()
+    public function login_validates_required_password_for_pin_login()
     {
-        $response = $this->post(route('login.submit'), [
-            'login_mode' => 'staff',
-        ]);
+        $response = $this->post(route('login.submit'), []);
 
-        $response->assertSessionHasErrors(['username', 'password']);
-    }
-
-    #[Test]
-    public function login_validates_required_password_for_admin()
-    {
-        $response = $this->post(route('login.submit'), [
-            'login_mode' => 'admin',
-        ]);
-
-        $response->assertSessionHasErrors(['password']);
+        $response->assertSessionHasErrors('password');
     }
 
     #[Test]
@@ -241,16 +215,12 @@ class LoginTest extends TestCase
         // Make 5 failed login attempts
         for ($i = 0; $i < 5; $i++) {
             $this->post(route('login.submit'), [
-                'login_mode' => 'staff',
-                'username' => 'test',
                 'password' => 'wrong',
             ]);
         }
 
         // 6th attempt should be rate limited
         $response = $this->post(route('login.submit'), [
-            'login_mode' => 'staff',
-            'username' => 'test',
             'password' => 'wrong',
         ]);
 
@@ -278,15 +248,13 @@ class LoginTest extends TestCase
     {
         $caissier = User::factory()->create([
             'username' => 'cashier01',
-            'password' => bcrypt('password123'),
+            'password' => bcrypt('778899'),
             'role' => 'caissier',
             'status' => 'active',
         ]);
 
         $response = $this->post(route('login.submit'), [
-            'login_mode' => 'staff',
-            'username' => 'cashier01',
-            'password' => 'password123',
+            'password' => '778899',
         ]);
 
         $response->assertSessionHasNoErrors();

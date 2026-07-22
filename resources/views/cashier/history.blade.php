@@ -82,10 +82,24 @@
                             <span class="text-gray-400">{{ $order->updated_at->format('H:i') }}</span>
                         </td>
                         <td class="px-4 py-4 whitespace-nowrap">
-                            <a href="{{ route('cashier.receipt', $order) }}" 
-                               class="text-blue-400 hover:text-blue-300 text-sm">
-                                Reçu PDF
-                            </a>
+                            <div class="flex items-center gap-3">
+                                <a href="{{ route('cashier.receipt', $order) }}"
+                                   class="text-blue-400 hover:text-blue-300 text-sm">
+                                    Reçu PDF
+                                </a>
+
+                                @if(auth()->user()?->isAdmin())
+                                    <form action="{{ route('cashier.history.cancel', ['commande' => $order, 'date' => request('date')]) }}"
+                                          method="POST"
+                                          onsubmit="return confirm('Confirmer l\'annulation de la vente #{{ $order->id }} ? Le stock sera restauré.');">
+                                        @csrf
+                                        <button type="submit"
+                                                class="text-red-400 hover:text-red-300 text-sm font-medium">
+                                            Annuler vente
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                     @empty

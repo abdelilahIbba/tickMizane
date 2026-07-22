@@ -19,7 +19,9 @@ class WifiQrController extends Controller
             'security' => Setting::getValue('wifi_security', 'WPA'),
         ];
 
-        return view('settings.wifi-qr.index', compact('wifi'));
+        $publicBaseUrl = Setting::getValue('public_base_url', rtrim((string) config('app.url'), '/'));
+
+        return view('settings.wifi-qr.index', compact('wifi', 'publicBaseUrl'));
     }
 
     /**
@@ -28,14 +30,30 @@ class WifiQrController extends Controller
     public function save(Request $request)
     {
         $request->validate([
-            'ssid'     => 'required|string|max:100',
+            'ssid'     => 'nullable|string|max:100',
             'password' => 'nullable|string|max:100',
-            'security' => 'required|in:WPA,WEP,nopass',
+            'security' => 'nullable|in:WPA,WEP,nopass',
+            'public_base_url' => 'nullable|string|max:255',
         ]);
 
-        Setting::setValue('wifi_ssid',     $request->ssid,                'wifi', 'string');
-        Setting::setValue('wifi_password', $request->password ?? '',      'wifi', 'string');
-        Setting::setValue('wifi_security', $request->security,            'wifi', 'string');
+        // Public URL/IP is saved as entered by the user (no forced rewrite).
+        $rawPublicUrl = trim((string) $request->input('public_base_url', ''));
+        if ($rawPublicUrl !== '') {
+            Setting::setValue('public_base_url', $rawPublicUrl, 'wifi', 'string');
+        }
+
+        // Keep Wi-Fi fields optional so IP updates can be saved independently.
+        if ($request->filled('ssid')) {
+            Setting::setValue('wifi_ssid', (string) $request->input('ssid'), 'wifi', 'string');
+        }
+
+        if ($request->has('password')) {
+            Setting::setValue('wifi_password', (string) $request->input('password', ''), 'wifi', 'string');
+        }
+
+        if ($request->filled('security')) {
+            Setting::setValue('wifi_security', (string) $request->input('security'), 'wifi', 'string');
+        }
 
         return back()->with('success', 'Paramètres Wi-Fi enregistrés avec succès.');
     }

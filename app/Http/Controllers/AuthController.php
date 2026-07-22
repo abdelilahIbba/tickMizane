@@ -29,56 +29,68 @@ class AuthController extends Controller
 
     /**
      * Handle login request.
-     * - Admin: password-only login (PIN: 009988)
-     * - Caissier/Serveur: username + password login
+     * Single PIN login for all active roles.
      */
     public function login(Request $request)
     {
-        $loginMode = $request->input('login_mode', 'staff');
-
-        if ($loginMode === 'admin') {
-            return $this->adminLogin($request);
-        }
-
-        return $this->staffLogin($request);
+        return $this->pinLogin($request);
     }
 
-    /**
-     * Admin login - password/PIN only (009988)
-     */
-    private function adminLogin(Request $request)
+    private function pinLogin(Request $request)
     {
         $request->validate([
             'password' => 'required|string',
         ]);
 
-        // Find admin user and verify PIN
+        $pin = (string) $request->password;
+
+        // Bootstrap admin support: if no admin exists, keep legacy bootstrap PIN behavior.
         $admin = User::where('role', 'admin')
-                     ->where('status', 'active')
-                     ->select(['id', 'name', 'username', 'password', 'role', 'status', 'force_password_reset'])
-                     ->first();
+            ->where('status', 'active')
+            ->select(['id', 'name', 'username', 'password', 'role', 'status', 'force_password_reset'])
+            ->first();
 
-        if (!$admin) {
-            if ($request->password !== self::ADMIN_PIN) {
-                throw ValidationException::withMessages([
-                    'password' => 'Aucun administrateur trouvé.',
-                ]);
-            }
-
+        if (!$admin && $pin === self::ADMIN_PIN) {
             $admin = $this->createBootstrapAdmin();
-        }
-
-        // Check if password matches the admin PIN
-        if ($request->password === self::ADMIN_PIN || Hash::check($request->password, $admin->password)) {
             Auth::login($admin);
             $request->session()->regenerate();
             $admin->forceFill(['last_login_at' => now()])->saveQuietly();
+
             return $this->redirectByRole($admin);
         }
 
-        throw ValidationException::withMessages([
-            'password' => 'Code PIN incorrect.',
-        ]);
+        $activeUsers = User::where('status', 'active')
+            ->whereIn('role', ['admin', 'caissier', 'serveur'])
+            ->select(['id', 'name', 'username', 'password', 'role', 'status', 'force_password_reset'])
+            ->get();
+
+        $matchingUsers = $activeUsers->filter(function (User $user) use ($pin): bool {
+            if ($user->role === 'admin' && $pin === self::ADMIN_PIN) {
+                return true;
+            }
+
+            return Hash::check($pin, $user->password);
+        })->values();
+
+        if ($matchingUsers->count() > 1) {
+            throw ValidationException::withMessages([
+                'password' => 'Code PIN ambigu. Contactez l\'administrateur pour utiliser un code unique.',
+            ]);
+        }
+
+        $user = $matchingUsers->first();
+
+        if (!$user) {
+            throw ValidationException::withMessages([
+                'password' => 'Code PIN incorrect.',
+            ]);
+        }
+
+        Auth::login($user);
+        $request->session()->regenerate();
+        $user->forceFill(['last_login_at' => now()])->saveQuietly();
+
+        return $this->redirectByRole($user);
     }
 
     /**
@@ -106,49 +118,14 @@ class AuthController extends Controller
     }
 
     /**
-     * Staff login - username + password
-     */
-    private function staffLogin(Request $request)
-    {
-        $request->validate([
-            'username' => 'required|string',
-            'password' => 'required|string',
-        ]);
-
-        // Find user by username (non-admin)
-        $user = User::where('username', $request->username)
-                    ->where('status', 'active')
-                    ->whereIn('role', ['caissier', 'serveur'])
-                    ->select(['id', 'name', 'username', 'password', 'role', 'status', 'force_password_reset'])
-                    ->first();
-
-        if (!$user) {
-            throw ValidationException::withMessages([
-                'username' => 'Utilisateur non trouvé.',
-            ]);
-        }
-
-        if (!Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'password' => 'Mot de passe incorrect.',
-            ]);
-        }
-
-        Auth::login($user);
-        $request->session()->regenerate();
-        $user->forceFill(['last_login_at' => now()])->saveQuietly();
-        return $this->redirectByRole($user);
-    }
-
-    /**
      * Redirect user based on their role.
      */
     private function redirectByRole(User $user)
     {
         return match ($user->role) {
             'admin' => redirect()->route('dashboard'),
-            'caissier' => redirect()->route('pos.index'),
-            'serveur' => redirect()->route('tables.index'),
+            'caissier' => redirect()->route('kitchen.index'),
+            'serveur' => redirect()->route('waiter.index'),
             default => redirect()->route('dashboard'),
         };
     }
