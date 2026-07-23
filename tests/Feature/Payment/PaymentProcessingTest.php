@@ -376,4 +376,43 @@ class PaymentProcessingTest extends TestCase
 
         $response->assertSessionHas('error');
     }
+
+    #[Test]
+    public function kitchen_order_payment_creates_vente_and_details_and_links_payment()
+    {
+        $response = $this->actingAs($this->cashier)
+            ->post(route('cashier.process-payment', $this->order), [
+                'payment_method' => 'cash',
+                'amount_received' => 200.00,
+            ]);
+
+        $response->assertSessionHas('success');
+
+        // Assert Vente is created
+        $this->assertDatabaseHas('ventes', [
+            'table_id' => $this->table->id,
+            'total' => 150.00,
+            'payment_method' => 'cash',
+            'status' => 'paid',
+        ]);
+
+        $vente = \App\Models\Vente::latest('id')->firstOrFail();
+
+        // Assert VenteDetail is created
+        $this->assertDatabaseHas('vente_details', [
+            'vente_id' => $vente->id,
+            'produit_id' => $this->product->id,
+            'quantity' => 3,
+            'price' => 50.00,
+            'total_line' => 150.00,
+        ]);
+
+        // Assert Paiement links to Vente
+        $this->assertDatabaseHas('paiements', [
+            'commande_id' => $this->order->id,
+            'vente_id' => $vente->id,
+            'amount' => 150.00,
+            'method' => 'cash',
+        ]);
+    }
 }

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Commande;
 use App\Models\CommandeDetail;
 use App\Models\Paiement;
+use App\Models\Vente;
+use App\Models\VenteDetail;
 use App\Services\OrderService;
 use App\Services\StockService;
 use Illuminate\Http\Request;
@@ -211,9 +213,6 @@ class CashierPosController extends Controller
         return max(0, round($amountReceived - $due, 2));
     }
 
-    /**
-     * Create payment record in paiements table.
-     */
     protected function createPaymentRecord(Commande $commande, array $paymentData): void
     {
         $paymentMethod = $paymentData['payment_method'];
@@ -225,12 +224,35 @@ class CashierPosController extends Controller
         $discountNote = $discountPct > 0
             ? sprintf('Remise %.1f%% (-%.2f DH)', $discountPct, $discountAmt)
             : null;
-        
+
+        // 1. Insert the sale into the ventes table
+        $vente = Vente::create([
+            'user_id'        => Auth::id() ?? $commande->user_id,
+            'table_id'       => $commande->table_id,
+            'total'          => $paymentAmount,
+            'payment_method' => $paymentMethod === 'mixte' ? 'mixte' : ($paymentMethod === 'carte' ? 'carte' : 'cash'),
+            'status'         => 'paid',
+        ]);
+
+        // 2. Insert details into the vente_details table
+        $commande->loadMissing('details.produit');
+        foreach ($commande->details as $detail) {
+            VenteDetail::create([
+                'vente_id'   => $vente->id,
+                'produit_id' => $detail->produit_id,
+                'quantity'   => $detail->quantity,
+                'price'      => $detail->price,
+                'total_line' => $detail->quantity * $detail->price,
+            ]);
+        }
+
+        // 3. Insert the payment record with both commande_id and vente_id
         if ($paymentMethod === 'mixte') {
             // Create two payment records for mixed payments
             if (($paymentData['cash_amount'] ?? 0) > 0) {
                 Paiement::create([
                     'commande_id' => $commande->id,
+                    'vente_id'    => $vente->id,
                     'amount'      => $paymentData['cash_amount'],
                     'method'      => 'cash',
                     'reference'   => 'PAY-' . strtoupper(uniqid()),
@@ -242,6 +264,7 @@ class CashierPosController extends Controller
             if (($paymentData['card_amount'] ?? 0) > 0) {
                 Paiement::create([
                     'commande_id' => $commande->id,
+                    'vente_id'    => $vente->id,
                     'amount'      => $paymentData['card_amount'],
                     'method'      => 'carte',
                     'reference'   => 'PAY-' . strtoupper(uniqid()),
@@ -252,8 +275,9 @@ class CashierPosController extends Controller
         } else {
             Paiement::create([
                 'commande_id' => $commande->id,
+                'vente_id'    => $vente->id,
                 'amount'      => $paymentAmount,
-                'method'      => $paymentMethod,
+                'method'      => $paymentMethod === 'carte' ? 'carte' : 'cash',
                 'reference'   => 'PAY-' . strtoupper(uniqid()),
                 'user_id'     => Auth::id(),
                 'notes'       => $discountNote,
