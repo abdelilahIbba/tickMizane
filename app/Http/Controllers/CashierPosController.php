@@ -338,11 +338,11 @@ class CashierPosController extends Controller
     }
 
     /**
-     * Show paid orders history.
+     * Show paid orders history (includes cancelled orders for audit visibility).
      */
     public function history(Request $request)
     {
-        $query = Commande::kitchen()->payee();
+        $query = Commande::kitchen()->whereIn('status', ['payee', 'annule']);
 
         // Filter by date
         if ($request->filled('date')) {
@@ -355,9 +355,26 @@ class CashierPosController extends Controller
             ->latest('updated_at')
             ->paginate(20);
 
-        $totalRevenue = $query->sum('total');
+        // Revenue only from paid orders (exclude cancelled)
+        $revenueQuery = Commande::kitchen()->payee();
+        if ($request->filled('date')) {
+            $revenueQuery->whereDate('updated_at', $request->date);
+        } else {
+            $revenueQuery->whereDate('updated_at', today());
+        }
+        $totalRevenue = $revenueQuery->sum('total');
 
-        return view('cashier.history', compact('orders', 'totalRevenue'));
+        // Count cancelled orders for the alert
+        $cancelledQuery = Commande::kitchen()->where('status', 'annule');
+        if ($request->filled('date')) {
+            $cancelledQuery->whereDate('updated_at', $request->date);
+        } else {
+            $cancelledQuery->whereDate('updated_at', today());
+        }
+        $cancelledCount = $cancelledQuery->count();
+        $cancelledTotal = $cancelledQuery->sum('total');
+
+        return view('cashier.history', compact('orders', 'totalRevenue', 'cancelledCount', 'cancelledTotal'));
     }
 
     /**

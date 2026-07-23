@@ -358,6 +358,7 @@ class WaiterController extends Controller
         /** @var Table|null $table */
         $table = $commande->table()->first();
         $commande->update(['status' => 'annule']);
+        $commande->logCustomAction('cancel', "Commande cuisine #{$commande->id} annulée par " . Auth::user()->name);
 
         if ($table) {
             $hasActive = Commande::where('table_id', $table->id)

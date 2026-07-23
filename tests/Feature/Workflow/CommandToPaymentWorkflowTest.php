@@ -67,6 +67,10 @@ class CommandToPaymentWorkflowTest extends TestCase
 
         $firstOrder = Commande::latest('id')->firstOrFail();
 
+        $this->actingAs($admin)
+            ->post(route('kitchen.order.ready', $firstOrder))
+            ->assertRedirect(route('kitchen.index'));
+
         $secondResponse = $this->actingAs($waiter)
             ->postJson(route('waiter.order.store', $table), [
                 'items' => [
@@ -82,10 +86,6 @@ class CommandToPaymentWorkflowTest extends TestCase
         $this->assertNotSame($firstOrder->id, $secondOrder->id);
         $this->assertSame($table->id, $firstOrder->fresh()->table_id);
         $this->assertSame($table->id, $secondOrder->fresh()->table_id);
-
-        $this->actingAs($admin)
-            ->post(route('kitchen.order.ready', $firstOrder))
-            ->assertRedirect(route('kitchen.index'));
 
         $this->actingAs($admin)
             ->post(route('kitchen.order.ready', $secondOrder))

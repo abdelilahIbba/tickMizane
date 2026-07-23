@@ -40,7 +40,7 @@ class CashierTicketReportTest extends TestCase
 
         $response = $this->actingAs($caissier)->get(route('cashier.tickets'));
 
-        $response->assertRedirect(route('pos.index'));
+        $response->assertRedirect(route('kitchen.index'));
     }
 
     #[Test]
