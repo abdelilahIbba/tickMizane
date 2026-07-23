@@ -22,9 +22,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'force-password-reset' => \App\Http\Middleware\ForcePasswordReset::class,
         ]);
         
-        // Add throttle to web group for rate limiting
+        // Add custom security headers & force password reset to web group
         $middleware->web(append: [
             \App\Http\Middleware\ForcePasswordReset::class,
+            \App\Http\Middleware\SecurityHeaders::class,
+        ]);
+
+        $middleware->api(append: [
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
