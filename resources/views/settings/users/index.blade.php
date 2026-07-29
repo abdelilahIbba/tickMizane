@@ -14,6 +14,18 @@
         </a>
     </div>
 
+    @if(session('success'))
+        <div class="mb-4 rounded-lg border border-emerald-700 bg-emerald-900/40 px-4 py-3 text-emerald-200">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="mb-4 rounded-lg border border-red-700 bg-red-900/40 px-4 py-3 text-red-200">
+            {{ session('error') }}
+        </div>
+    @endif
+
     <!-- Users Table -->
     <div class="bg-gray-900/50 backdrop-blur-sm rounded-lg border border-gray-800 shadow-lg overflow-hidden">
         <table class="min-w-full divide-y divide-gray-800">

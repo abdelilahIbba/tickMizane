@@ -55,6 +55,25 @@ class UserManagementTest extends TestCase
             'username' => 'testuser',
             'role' => 'serveur',
         ]);
+
+        $created = User::where('username', 'testuser')->first();
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('password123', $created->password));
+    }
+
+    #[Test]
+    public function admin_can_delete_user(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'serveur',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->delete(route('settings.users.destroy', $user));
+
+        $response->assertRedirect(route('settings.users.index'));
+        $response->assertSessionHas('success');
+        $this->assertDatabaseMissing('users', ['id' => $user->id]);
     }
 
     #[Test]

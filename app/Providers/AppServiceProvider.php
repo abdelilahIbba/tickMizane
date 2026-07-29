@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Auth\SuperAdminUserProvider;
 use App\Models\Category;
 use App\Models\Commande;
 use App\Models\Fournisseur;
@@ -19,6 +20,7 @@ use App\Policies\ProductPolicy;
 use App\Policies\StockMovementPolicy;
 use App\Policies\TablePolicy;
 use App\Policies\VentePolicy;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
@@ -32,7 +34,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        Auth::provider('super_admin_eloquent', function ($app, array $config) {
+            return new SuperAdminUserProvider($app['hash'], $config['model']);
+        });
     }
 
     /**

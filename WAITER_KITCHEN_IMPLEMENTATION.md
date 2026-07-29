@@ -157,7 +157,7 @@ composer require barryvdh/laravel-dompdf
 ### 4. Test the Features
 
 #### **As a Waiter (Serveur)**
-- Login: `serveur1` / Password: `serveur123`
+- Login with the temporary PIN displayed by `php artisan db:seed`
 - Navigate to `/waiter`
 - Select a table
 - Add products to order
@@ -165,7 +165,7 @@ composer require barryvdh/laravel-dompdf
 - Submit order
 
 #### **As Kitchen Staff (Admin)**
-- Login: `admin` / Password: `009988`
+- Login with the temporary admin PIN displayed by `php artisan db:seed`
 - Navigate to `/kitchen`
 - View active orders
 - Mark orders as served
@@ -175,12 +175,14 @@ composer require barryvdh/laravel-dompdf
 
 ## 🔑 User Roles & Access
 
-| Role | Username | Password | Access |
-|------|----------|----------|--------|
-| **Admin** | admin | 009988 | Full access + Kitchen dashboard |
-| **Serveur 1** | serveur1 | serveur123 | Waiter tablet + Tables |
-| **Serveur 2** | serveur2 | serveur123 | Waiter tablet + Tables |
-| **Caissier** | caissier1 | caisse123 | POS + Sales |
+| Role | Username | Credential | Access |
+|------|----------|------------|--------|
+| **Admin** | admin | Generated during seeding | Full access + Kitchen dashboard |
+| **Serveur 1** | serveur1 | Generated during seeding | Waiter tablet + Tables |
+| **Serveur 2** | serveur2 | Generated during seeding | Waiter tablet + Tables |
+| **Caissier** | caissier1 | Generated during seeding | POS + Sales |
+
+Seeded PINs are random, temporary, and rotated whenever `UsersSeeder` runs. The seeder is disabled in production.
 
 ---
 

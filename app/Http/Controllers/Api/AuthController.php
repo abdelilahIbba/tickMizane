@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\LicenseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -11,6 +12,11 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    public function __construct(
+        private readonly LicenseService $licenseService,
+    ) {
+    }
+
     /**
      * Login and get API token.
      */
@@ -34,6 +40,12 @@ class AuthController extends Controller
         if (!$user->isActive()) {
             throw ValidationException::withMessages([
                 'username' => ['Votre compte a été bloqué. Contactez l\'administrateur.'],
+            ]);
+        }
+
+        if ($this->licenseService->isExpiredOrMissing()) {
+            throw ValidationException::withMessages([
+                'username' => [$this->licenseService->clientBlockMessage()],
             ]);
         }
 

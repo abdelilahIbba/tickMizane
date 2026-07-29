@@ -39,6 +39,7 @@ class LoginTest extends TestCase
     #[Test]
     public function it_redirects_authenticated_users_from_login_page()
     {
+        /** @var User $admin */
         $admin = User::factory()->create([
             'role' => 'admin',
             'status' => 'active',
@@ -53,13 +54,13 @@ class LoginTest extends TestCase
     public function admin_can_login_with_pin_code()
     {
         $admin = User::factory()->create([
-            'password' => bcrypt('009988'),
+            'password' => bcrypt('483921'),
             'role' => 'admin',
             'status' => 'active',
         ]);
 
         $response = $this->post(route('login.submit'), [
-            'password' => '009988', // Admin PIN
+            'password' => '483921',
         ]);
 
         $response->assertRedirect(route('dashboard'));
@@ -83,18 +84,15 @@ class LoginTest extends TestCase
     }
 
     #[Test]
-    public function admin_login_creates_bootstrap_admin_when_none_exists_and_pin_is_valid()
+    public function login_cannot_bootstrap_an_admin_with_a_shared_pin()
     {
         $response = $this->post(route('login.submit'), [
-            'password' => '009988',
+            'password' => '483921',
         ]);
 
-        $response->assertRedirect(route('dashboard'));
-        $this->assertAuthenticated();
-        $this->assertDatabaseHas('users', [
-            'role' => 'admin',
-            'status' => 'active',
-        ]);
+        $response->assertSessionHasErrors('password');
+        $this->assertGuest();
+        $this->assertDatabaseMissing('users', ['role' => 'admin']);
     }
 
     #[Test]
@@ -228,8 +226,27 @@ class LoginTest extends TestCase
     }
 
     #[Test]
+    public function api_login_is_rate_limited_after_five_attempts()
+    {
+        $this->withMiddleware(ThrottleRequests::class);
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->postJson('/api/v1/auth/login', [
+                'username' => 'unknown',
+                'password' => 'wrong',
+            ]);
+        }
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'unknown',
+            'password' => 'wrong',
+        ])->assertStatus(429);
+    }
+
+    #[Test]
     public function user_can_logout()
     {
+        /** @var User $user */
         $user = User::factory()->create([
             'role' => 'caissier',
             'status' => 'active',

@@ -26,6 +26,7 @@
         'users' => ['settings.users.*'],
         'permissions' => ['settings.permissions.*'],
         'wifi_qr' => ['settings.wifi-qr.*'],
+        'licenses' => ['settings.licenses.*'],
     ];
     
     // Define navigation groups with labels
@@ -80,12 +81,23 @@
                 'users' => ['label' => 'Utilisateurs', 'route' => 'settings.users.index', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>'],
                 'permissions' => ['label' => 'Permissions', 'route' => 'settings.permissions.index', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>'],
                 'wifi_qr' => ['label' => 'Wi-Fi & Commande Client', 'route' => 'settings.wifi-qr.index', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>'],
+                'licenses' => ['label' => 'Licences clients', 'route' => 'settings.licenses.index', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>'],
             ],
         ],
     ];
     
     // Role-based access
+    // Super User = admin (uses activated licenses, no license management)
+    // Super Admin = synthetic role (exclusive license management)
     $roleAccess = [
+        'super_admin' => [
+            'main' => ['dashboard'],
+            'operations' => ['waiter', 'kitchen', 'display', 'commandes_en_attente', 'cashier'],
+            'inventory' => ['products', 'categories', 'stock'],
+            'suppliers' => ['commandes', 'fournisseurs'],
+            'finance' => ['payments', 'cashier_history'],
+            'settings' => ['licenses', 'articles', 'zones', 'system', 'users', 'permissions', 'wifi_qr'],
+        ],
         'admin' => [
             'main' => ['dashboard'],
             'operations' => ['waiter', 'kitchen', 'display', 'commandes_en_attente', 'cashier'],
@@ -103,6 +115,13 @@
     ];
     
     $access = $roleAccess[$role] ?? [];
+    $roleLabel = match ($role) {
+        'super_admin' => 'Super Admin',
+        'admin' => 'Super User',
+        'caissier' => 'Caissier',
+        'serveur' => 'Serveur',
+        default => $role,
+    };
 @endphp
 
 @auth
@@ -227,7 +246,7 @@
             </div>
             <div class="min-w-0 flex-1">
                 <div class="text-sm font-medium text-white truncate">{{ $user->name }}</div>
-                <div class="text-xs text-gray-400 capitalize">{{ $user->role }}</div>
+                <div class="text-xs text-gray-400">{{ $roleLabel }}</div>
             </div>
         </div>
         

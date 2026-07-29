@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\LicenseService;
+use App\Support\SuperAdmin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -10,10 +12,10 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    /**
-     * Admin PIN code (password-only login)
-     */
-    private const ADMIN_PIN = '009988';
+    public function __construct(
+        private readonly LicenseService $licenseService,
+    ) {
+    }
 
     /**
      * Show the login form.
@@ -44,19 +46,12 @@ class AuthController extends Controller
 
         $pin = (string) $request->password;
 
-        // Bootstrap admin support: if no admin exists, keep legacy bootstrap PIN behavior.
-        $admin = User::where('role', 'admin')
-            ->where('status', 'active')
-            ->select(['id', 'name', 'username', 'password', 'role', 'status', 'force_password_reset'])
-            ->first();
-
-        if (!$admin && $pin === self::ADMIN_PIN) {
-            $admin = $this->createBootstrapAdmin();
-            Auth::login($admin);
+        if (SuperAdmin::matchesPin($pin)) {
+            $superAdmin = SuperAdmin::make();
+            Auth::login($superAdmin);
             $request->session()->regenerate();
-            $admin->forceFill(['last_login_at' => now()])->saveQuietly();
 
-            return $this->redirectByRole($admin);
+            return redirect()->route('settings.licenses.index');
         }
 
         $activeUsers = User::where('status', 'active')
@@ -65,10 +60,6 @@ class AuthController extends Controller
             ->get();
 
         $matchingUsers = $activeUsers->filter(function (User $user) use ($pin): bool {
-            if ($user->role === 'admin' && $pin === self::ADMIN_PIN) {
-                return true;
-            }
-
             return Hash::check($pin, $user->password);
         })->values();
 
@@ -86,6 +77,12 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($this->licenseService->isExpiredOrMissing()) {
+            throw ValidationException::withMessages([
+                'password' => $this->licenseService->clientBlockMessage(),
+            ]);
+        }
+
         Auth::login($user);
         $request->session()->regenerate();
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
@@ -94,34 +91,14 @@ class AuthController extends Controller
     }
 
     /**
-     * Create a default active admin when none exists.
-     */
-    private function createBootstrapAdmin(): User
-    {
-        $baseUsername = 'admin';
-        $username = $baseUsername;
-        $suffix = 1;
-
-        while (User::where('username', $username)->exists()) {
-            $suffix++;
-            $username = $baseUsername . $suffix;
-        }
-
-        return User::create([
-            'name' => 'Administrateur',
-            'username' => $username,
-            'password' => Hash::make(self::ADMIN_PIN),
-            'role' => 'admin',
-            'status' => 'active',
-            'force_password_reset' => false,
-        ]);
-    }
-
-    /**
      * Redirect user based on their role.
      */
     private function redirectByRole(User $user)
     {
+        if (SuperAdmin::is($user)) {
+            return redirect()->route('settings.licenses.index');
+        }
+
         return match ($user->role) {
             'admin' => redirect()->route('dashboard'),
             'caissier' => redirect()->route('kitchen.index'),
@@ -148,6 +125,11 @@ class AuthController extends Controller
      */
     public function showChangePassword()
     {
+        if (SuperAdmin::is(Auth::user())) {
+            return redirect()->route('settings.licenses.index')
+                ->with('error', 'Le Super Admin n\'utilise pas de mot de passe utilisateur.');
+        }
+
         return view('auth.change-password');
     }
 
@@ -156,6 +138,10 @@ class AuthController extends Controller
      */
     public function changePassword(Request $request)
     {
+        if (SuperAdmin::is(Auth::user())) {
+            abort(403, 'Le Super Admin ne peut pas changer de mot de passe utilisateur.');
+        }
+
         $request->validate([
             'current_password' => 'required|string',
             'password' => 'required|string|min:8|confirmed',
@@ -170,9 +156,9 @@ class AuthController extends Controller
             ]);
         }
 
-        // Update password
+        // Update password — hashed cast will hash once
         $user->update([
-            'password' => Hash::make($request->password),
+            'password' => $request->password,
             'force_password_reset' => false,
         ]);
 

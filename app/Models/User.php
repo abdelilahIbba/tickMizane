@@ -151,11 +151,19 @@ class User extends Authenticatable
     */
 
     /**
-     * Check if user is admin.
+     * Check if the authenticated principal is the synthetic Super Admin.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return \App\Support\SuperAdmin::is($this);
+    }
+
+    /**
+     * Check if user is admin (Super User) or Super Admin.
      */
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->role === 'admin' || $this->isSuperAdmin();
     }
 
     /**
@@ -195,12 +203,6 @@ class User extends Authenticatable
      */
     public function logCustomAction(string $action, string $description): void
     {
-        Historique::create([
-            'user_id' => auth()->id() ?? $this->id,
-            'action' => $action,
-            'description' => $description,
-            'model_type' => self::class,
-            'model_id' => $this->id,
-        ]);
+        $this->logHistorique($action, $description);
     }
 }

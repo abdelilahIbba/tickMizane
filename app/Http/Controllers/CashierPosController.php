@@ -9,6 +9,7 @@ use App\Models\Vente;
 use App\Models\VenteDetail;
 use App\Services\OrderService;
 use App\Services\StockService;
+use App\Support\SuperAdmin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -227,7 +228,7 @@ class CashierPosController extends Controller
 
         // 1. Insert the sale into the ventes table
         $vente = Vente::create([
-            'user_id'        => Auth::id() ?? $commande->user_id,
+            'user_id'        => SuperAdmin::databaseUserId() ?? $commande->user_id,
             'table_id'       => $commande->table_id,
             'total'          => $paymentAmount,
             'payment_method' => $paymentMethod === 'mixte' ? 'mixte' : ($paymentMethod === 'carte' ? 'carte' : 'cash'),
@@ -256,7 +257,7 @@ class CashierPosController extends Controller
                     'amount'      => $paymentData['cash_amount'],
                     'method'      => 'cash',
                     'reference'   => 'PAY-' . strtoupper(uniqid()),
-                    'user_id'     => Auth::id(),
+                    'user_id'     => SuperAdmin::databaseUserId(),
                     'notes'       => $discountNote,
                 ]);
             }
@@ -268,7 +269,7 @@ class CashierPosController extends Controller
                     'amount'      => $paymentData['card_amount'],
                     'method'      => 'carte',
                     'reference'   => 'PAY-' . strtoupper(uniqid()),
-                    'user_id'     => Auth::id(),
+                    'user_id'     => SuperAdmin::databaseUserId(),
                     'notes'       => $discountNote,
                 ]);
             }
@@ -279,7 +280,7 @@ class CashierPosController extends Controller
                 'amount'      => $paymentAmount,
                 'method'      => $paymentMethod === 'carte' ? 'carte' : 'cash',
                 'reference'   => 'PAY-' . strtoupper(uniqid()),
-                'user_id'     => Auth::id(),
+                'user_id'     => SuperAdmin::databaseUserId(),
                 'notes'       => $discountNote,
             ]);
         }

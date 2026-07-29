@@ -299,17 +299,19 @@ class WaiterController extends Controller
                 ->route('waiter.index')
                 ->with('success', "Commande créée pour la table {$table->numero}");
                 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            report($e);
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => $e->getMessage(),
-                ], 422);
+                    'message' => 'Impossible de créer la commande. Réessayez ou contactez le support.',
+                ], 500);
             }
 
             return back()
                 ->withInput()
-                ->with('error', 'Erreur: ' . $e->getMessage());
+                ->with('error', 'Impossible de créer la commande. Réessayez ou contactez le support.');
         }
     }
 
@@ -427,7 +429,12 @@ class WaiterController extends Controller
      */
     public function validateAdminPin(Request $request)
     {
-        $pin = $request->input('pin', '');
+        $validated = $request->validate([
+            'pin' => ['required', 'string', 'min:6', 'max:64'],
+        ]);
+
+        $pin = $validated['pin'];
+
         return response()->json(['valid' => $this->verifyAdminPin($pin)]);
     }
 
@@ -439,11 +446,15 @@ class WaiterController extends Controller
         if ($pin === '') {
             return false;
         }
-        if ($pin === '009988') {
+
+        if (\App\Support\SuperAdmin::matchesPin($pin)) {
             return true;
         }
-        $admin = User::where('role', 'admin')->where('status', 'active')->first();
-        return $admin && Hash::check($pin, $admin->password);
+
+        return User::where('role', 'admin')
+            ->where('status', 'active')
+            ->get(['password'])
+            ->contains(fn (User $admin): bool => Hash::check($pin, $admin->password));
     }
 
     /**
@@ -456,8 +467,8 @@ class WaiterController extends Controller
             abort(404);
         }
 
-        // Only show orders created by this waiter or admin
-        if (Auth::user()->role !== 'admin' && $commande->user_id !== Auth::id()) {
+        // Only show orders created by this waiter, or elevated staff
+        if (!Auth::user()->isAdmin() && $commande->user_id !== Auth::id()) {
             abort(403);
         }
 

@@ -8,9 +8,9 @@ use App\Models\Fournisseur;
 use App\Models\Produit;
 use App\Models\Table;
 use App\Events\NewKitchenOrder;
+use App\Support\SuperAdmin;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Fluent;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class OrderService
@@ -31,7 +31,7 @@ class OrderService
             // Create commande
             $commande = Commande::create([
                 'fournisseur_id' => $fournisseur->id,
-                'user_id' => Auth::id(),
+                'user_id' => SuperAdmin::databaseUserId(),
                 'total' => 0,
                 'status' => 'pending',
                 'type' => 'supplier',
@@ -241,7 +241,7 @@ class OrderService
 
             // Create kitchen order with 'en_cuisine' status
             $commande = Commande::create([
-                'user_id' => Auth::id(),
+                'user_id' => SuperAdmin::databaseUserId(),
                 'table_id' => $table->id,
                 'total' => 0,
                 'status' => $hasKitchenItems ? 'en_cuisine' : 'pret', // Order sent to kitchen unless everything is direct service

@@ -93,6 +93,7 @@ services:
       - ./config:/app/config
       - ./database:/app/database
       - ./tests:/app/tests
+      - ./bootstrap/app.php:/app/bootstrap/app.php:ro
       - ./phpunit.xml:/app/phpunit.xml:ro
       - ./storage/app/public:/app/storage/app/public
       - app_storage_framework:/app/storage/framework
@@ -142,6 +143,7 @@ services:
       - ./routes:/app/routes
       - ./config:/app/config
       - ./database:/app/database
+      - ./bootstrap/app.php:/app/bootstrap/app.php:ro
       - app_storage_framework:/app/storage/framework
       - app_bootstrap_cache:/app/bootstrap/cache
       - app_logs:/app/storage/logs

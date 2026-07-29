@@ -3,10 +3,10 @@
 namespace App\Services;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Support\Collection;
+use RuntimeException;
 
 class UserService
 {
@@ -32,13 +32,14 @@ class UserService
     public function createUser(array $data): User
     {
         return DB::transaction(function () use ($data) {
+            // Password is hashed by the User model cast — do not Hash::make here.
             $user = User::create([
                 'name' => $data['name'],
                 'username' => $data['username'],
-                'password' => Hash::make($data['password']),
+                'password' => $data['password'],
                 'role' => $data['role'],
                 'status' => $data['status'] ?? 'active',
-                'force_password_reset' => $data['force_password_reset'] ?? false,
+                'force_password_reset' => (bool) ($data['force_password_reset'] ?? false),
             ]);
 
             return $user->fresh();
@@ -79,11 +80,10 @@ class UserService
     public function resetPassword(User $user, ?string $newPassword = null, bool $forceReset = true): string
     {
         return DB::transaction(function () use ($user, $newPassword, $forceReset) {
-            // Generate random password if not provided
             $tempPassword = $newPassword ?? Str::random(12);
 
             $user->update([
-                'password' => Hash::make($tempPassword),
+                'password' => $tempPassword,
                 'force_password_reset' => $forceReset,
             ]);
 
@@ -98,7 +98,7 @@ class UserService
     {
         DB::transaction(function () use ($user, $newPassword) {
             $user->update([
-                'password' => Hash::make($newPassword),
+                'password' => $newPassword,
                 'force_password_reset' => false,
             ]);
         });
@@ -129,13 +129,23 @@ class UserService
     }
 
     /**
-     * Delete user (soft).
+     * Permanently delete a user when safe.
+     *
+     * Users linked to ventes/commandes cannot be hard-deleted (would cascade
+     * wipe financial history). Deactivate them instead.
      */
     public function deleteUser(User $user): bool
     {
         return DB::transaction(function () use ($user) {
-            // Deactivate instead of hard delete
-            $user->update(['status' => 'blocked']);
+            if ($user->ventes()->exists() || $user->commandes()->exists()) {
+                throw new RuntimeException(
+                    'Impossible de supprimer cet utilisateur car il est lié à des ventes ou commandes. Désactivez-le à la place.'
+                );
+            }
+
+            $user->permissions()->delete();
+            $user->tokens()->delete();
+            $user->delete();
 
             return true;
         });

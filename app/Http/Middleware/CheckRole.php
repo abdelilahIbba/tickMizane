@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\SuperAdmin;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -44,8 +45,8 @@ class CheckRole
 
         $userRole = $user->role;
 
-        // Admin has access to everything
-        if ($userRole === 'admin') {
+        // Super Admin and Super User (admin) have access to everything
+        if ($userRole === 'admin' || SuperAdmin::is($user)) {
             return $next($request);
         }
 

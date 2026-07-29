@@ -26,6 +26,8 @@ use App\Http\Controllers\Settings\DocumentationController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\ClientOrderController;
 use App\Http\Controllers\Settings\WifiQrController;
+use App\Http\Controllers\Settings\LicenseController;
+use App\Http\Controllers\LicenseBlockedController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,7 +40,9 @@ Route::get('/menu/tv', [MenuController::class, 'tv'])->name('menu.tv');
 
 // Client Ordering (public — no auth required)
 Route::get('/order', [ClientOrderController::class, 'menu'])->name('client.order.menu');
-Route::post('/order/submit', [ClientOrderController::class, 'submitOrder'])->name('client.order.submit');
+Route::post('/order/submit', [ClientOrderController::class, 'submitOrder'])
+    ->middleware('throttle:10,1')
+    ->name('client.order.submit');
 
 /*
 |--------------------------------------------------------------------------
@@ -48,6 +52,9 @@ Route::post('/order/submit', [ClientOrderController::class, 'submitOrder'])->nam
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::get('/license/blocked', LicenseBlockedController::class)
+    ->middleware('auth')
+    ->name('license.blocked');
 
 /*
 |--------------------------------------------------------------------------
@@ -187,10 +194,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/waiter/order/{commande}', [WaiterController::class, 'showOrder'])->name('waiter.order.show');
         
         // Order actions
-        Route::post('/waiter/order/{commande}/cancel', [WaiterController::class, 'cancelKitchenOrder'])->name('waiter.order.cancel');
+        Route::post('/waiter/order/{commande}/cancel', [WaiterController::class, 'cancelKitchenOrder'])
+            ->middleware('throttle:5,1')
+            ->name('waiter.order.cancel');
         Route::post('/waiter/order/{commande}/transfer', [WaiterController::class, 'transferOrder'])->name('waiter.order.transfer');
         Route::post('/waiter/order/{commande}/finalize', [WaiterController::class, 'finalizeForSettlement'])->name('waiter.order.finalize');
-        Route::post('/waiter/validate-pin', [WaiterController::class, 'validateAdminPin'])->name('waiter.validate.pin');
+        Route::post('/waiter/validate-pin', [WaiterController::class, 'validateAdminPin'])
+            ->middleware('throttle:5,1')
+            ->name('waiter.validate.pin');
 
         // AJAX endpoints
         Route::get('/waiter/category/{category}/products', [WaiterController::class, 'getProductsByCategory'])->name('waiter.category.products');
@@ -239,7 +250,18 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/kitchen/order/{commande}/served', [KitchenController::class, 'markServed'])->name('kitchen.order.served');
     });
 
-    // Settings - User Management (Admin only)
+    // License management — Super Admin only (independent of users table)
+    Route::middleware([\App\Http\Middleware\EnsureSuperAdmin::class])
+        ->prefix('settings')
+        ->name('settings.')
+        ->group(function () {
+            Route::get('/licenses', [LicenseController::class, 'index'])->name('licenses.index');
+            Route::post('/licenses', [LicenseController::class, 'store'])->name('licenses.store');
+            Route::post('/licenses/{license}/activate', [LicenseController::class, 'activate'])->name('licenses.activate');
+            Route::post('/licenses/{license}/revoke', [LicenseController::class, 'revoke'])->name('licenses.revoke');
+        });
+
+    // Settings - User Management (Admin / Super User only)
     Route::middleware(['role:admin'])->group(function () {
         Route::prefix('settings')->name('settings.')->group(function () {
             Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
