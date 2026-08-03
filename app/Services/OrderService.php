@@ -8,9 +8,9 @@ use App\Models\Fournisseur;
 use App\Models\Produit;
 use App\Models\Table;
 use App\Events\NewKitchenOrder;
+use App\Support\SuperAdmin;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Fluent;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -49,7 +49,7 @@ class OrderService
             // Create commande
             $commande = Commande::create([
                 'fournisseur_id' => $fournisseur->id,
-                'user_id' => Auth::id(),
+                'user_id' => SuperAdmin::databaseUserId(),
                 'total' => 0,
                 'status' => 'pending',
                 'type' => 'supplier',
@@ -259,7 +259,7 @@ class OrderService
 
             // Create kitchen order with 'en_cuisine' status
             $commande = Commande::create([
-                'user_id' => Auth::id(),
+                'user_id' => SuperAdmin::databaseUserId(),
                 'table_id' => $table->id,
                 'total' => 0,
                 'status' => $hasKitchenItems ? 'en_cuisine' : 'pret', // Order sent to kitchen unless everything is direct service
@@ -440,6 +440,8 @@ class OrderService
             ->oldest()
             ->get();
 
+        $orders->each(fn (Commande $order) => $this->reconcileKitchenOrderTotal($order));
+
         return $this->buildPendingPaymentTableSummaries($orders);
     }
 
@@ -448,11 +450,15 @@ class OrderService
      */
     public function getReadyForPaymentOrders(): Collection
     {
-        return Commande::kitchen()
+        $orders = Commande::kitchen()
             ->forCashier()
             ->with(['details.produit', 'table', 'user'])
             ->oldest()
             ->get();
+
+        $orders->each(fn (Commande $order) => $this->reconcileKitchenOrderTotal($order));
+
+        return $orders;
     }
 
     /**
@@ -460,12 +466,16 @@ class OrderService
      */
     public function getReadyPaymentOrdersForTable(int $tableId): Collection
     {
-        return Commande::kitchen()
+        $orders = Commande::kitchen()
             ->forCashier()
             ->where('table_id', $tableId)
             ->with(['details.produit', 'table', 'user'])
             ->oldest()
             ->get();
+
+        $orders->each(fn (Commande $order) => $this->reconcileKitchenOrderTotal($order));
+
+        return $orders;
     }
 
     /**
@@ -543,7 +553,7 @@ class OrderService
                     'user'                        => $firstOrder->user,
                     'user_names'                  => $tableOrders->pluck('user.name')->filter()->unique()->implode(', '),
                     'details'                     => $details,
-                    'total'                       => (float) $tableOrders->sum(fn (Commande $order) => (float) $order->total),
+                    'total'                       => (float) $tableOrders->sum(fn (Commande $order) => $this->reconcileKitchenOrderTotal($order)),
                     'created_at'                  => $firstOrder->created_at,
                     'status'                      => $status,
                     'status_label'                => $tableOrders->count() > 1 ? 'Prêtes à payer' : $firstOrder->status_label,
@@ -558,6 +568,7 @@ class OrderService
 
         // Each client order (no table) becomes its own independent card
         $clientSummaries = $withoutTable->map(function (Commande $order) {
+            $orderTotal = $this->reconcileKitchenOrderTotal($order);
             $details = $order->details->map(function ($detail) use ($order) {
                 $detail->source_commande_id = $order->id;
                 return $detail;
@@ -570,7 +581,7 @@ class OrderService
                 'user'                        => null,
                 'user_names'                  => 'Commande client',
                 'details'                     => $details,
-                'total'                       => (float) $order->total,
+                    'total'                       => $orderTotal,
                 'created_at'                  => $order->created_at,
                 'status'                      => $order->status,
                 'status_label'                => $order->status_label,
@@ -635,5 +646,24 @@ class OrderService
 
                 return $order;
             });
+    }
+
+    /**
+     * Ensure stored kitchen order totals match the sum of details.
+     */
+    protected function reconcileKitchenOrderTotal(Commande $order): float
+    {
+        $order->loadMissing('details');
+
+        $detailsTotal = (float) $order->details->sum(
+            fn (CommandeDetail $detail) => ((float) $detail->price) * ((int) $detail->quantity)
+        );
+
+        if (abs(((float) $order->total) - $detailsTotal) > 0.009) {
+            $order->forceFill(['total' => $detailsTotal])->saveQuietly();
+            $order->setAttribute('total', $detailsTotal);
+        }
+
+        return $detailsTotal;
     }
 }

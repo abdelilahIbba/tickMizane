@@ -5,10 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Commande;
 use App\Models\CommandeDetail;
 use App\Models\Paiement;
+use App\Models\Vente;
+use App\Models\VenteDetail;
 use App\Services\OrderService;
+use App\Services\StockService;
+use App\Support\SuperAdmin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 /**
@@ -83,6 +89,8 @@ class CashierPosController extends Controller
                 ->with('info', 'Aucune commande prête à encaisser pour cette table.');
         }
 
+        $paymentOrders = $this->reconcileOrderTotals($paymentOrders);
+
         $combinedTotal = (float) $paymentOrders->sum(fn (Commande $order) => (float) $order->total);
 
         return view('cashier.payment', compact('commande', 'paymentOrders', 'combinedTotal'));
@@ -123,6 +131,8 @@ class CashierPosController extends Controller
             if ($paymentOrders->isEmpty()) {
                 throw new \InvalidArgumentException('Aucune commande prête à encaisser pour cette table.');
             }
+
+            $paymentOrders = $this->reconcileOrderTotals($paymentOrders);
 
             $paymentMethod  = $validated['payment_method'];
             $amountReceived = $validated['amount_received'] ?? null;
@@ -217,9 +227,6 @@ class CashierPosController extends Controller
         return max(0, round($amountReceived - $due, 2));
     }
 
-    /**
-     * Create payment record in paiements table.
-     */
     protected function createPaymentRecord(Commande $commande, array $paymentData): void
     {
         $paymentMethod = $paymentData['payment_method'];
@@ -231,16 +238,39 @@ class CashierPosController extends Controller
         $discountNote = $discountPct > 0
             ? sprintf('Remise %.1f%% (-%.2f DH)', $discountPct, $discountAmt)
             : null;
-        
+
+        // 1. Insert the sale into the ventes table
+        $vente = Vente::create([
+            'user_id'        => SuperAdmin::databaseUserId() ?? $commande->user_id,
+            'table_id'       => $commande->table_id,
+            'total'          => $paymentAmount,
+            'payment_method' => $paymentMethod === 'mixte' ? 'mixte' : ($paymentMethod === 'carte' ? 'carte' : 'cash'),
+            'status'         => 'paid',
+        ]);
+
+        // 2. Insert details into the vente_details table
+        $commande->loadMissing('details.produit');
+        foreach ($commande->details as $detail) {
+            VenteDetail::create([
+                'vente_id'   => $vente->id,
+                'produit_id' => $detail->produit_id,
+                'quantity'   => $detail->quantity,
+                'price'      => $detail->price,
+                'total_line' => $detail->quantity * $detail->price,
+            ]);
+        }
+
+        // 3. Insert the payment record with both commande_id and vente_id
         if ($paymentMethod === 'mixte') {
             // Create two payment records for mixed payments
             if (($paymentData['cash_amount'] ?? 0) > 0) {
                 Paiement::create([
                     'commande_id' => $commande->id,
+                    'vente_id'    => $vente->id,
                     'amount'      => $paymentData['cash_amount'],
                     'method'      => 'cash',
                     'reference'   => 'PAY-' . strtoupper(uniqid()),
-                    'user_id'     => Auth::id(),
+                    'user_id'     => SuperAdmin::databaseUserId(),
                     'notes'       => $discountNote,
                 ]);
             }
@@ -248,20 +278,22 @@ class CashierPosController extends Controller
             if (($paymentData['card_amount'] ?? 0) > 0) {
                 Paiement::create([
                     'commande_id' => $commande->id,
+                    'vente_id'    => $vente->id,
                     'amount'      => $paymentData['card_amount'],
                     'method'      => 'carte',
                     'reference'   => 'PAY-' . strtoupper(uniqid()),
-                    'user_id'     => Auth::id(),
+                    'user_id'     => SuperAdmin::databaseUserId(),
                     'notes'       => $discountNote,
                 ]);
             }
         } else {
             Paiement::create([
                 'commande_id' => $commande->id,
+                'vente_id'    => $vente->id,
                 'amount'      => $paymentAmount,
-                'method'      => $paymentMethod,
+                'method'      => $paymentMethod === 'carte' ? 'carte' : 'cash',
                 'reference'   => 'PAY-' . strtoupper(uniqid()),
-                'user_id'     => Auth::id(),
+                'user_id'     => SuperAdmin::databaseUserId(),
                 'notes'       => $discountNote,
             ]);
         }
@@ -321,6 +353,8 @@ class CashierPosController extends Controller
                 ->with('error', 'Cette commande n\'est pas encore payée.');
         }
 
+        $orders = $this->reconcileOrderTotals($orders);
+
         $paymentMethod = $request->string('payment_method')->value() ?: 'cash';
         $changeAmount  = max(0, (float) $request->input('change', 0));
         $totalAmount   = (float) $orders->sum(fn (Commande $order) => (float) $order->total);
@@ -342,11 +376,11 @@ class CashierPosController extends Controller
     }
 
     /**
-     * Show paid orders history.
+     * Show paid orders history (includes cancelled orders for audit visibility).
      */
     public function history(Request $request)
     {
-        $query = Commande::kitchen()->payee();
+        $query = Commande::kitchen()->whereIn('status', ['payee', 'annule']);
 
         // Filter by date
         if ($request->filled('date')) {
@@ -359,9 +393,90 @@ class CashierPosController extends Controller
             ->latest('updated_at')
             ->paginate(20);
 
-        $totalRevenue = $query->sum('total');
+        // Revenue only from paid orders (exclude cancelled)
+        $revenueQuery = Commande::kitchen()->payee();
+        if ($request->filled('date')) {
+            $revenueQuery->whereDate('updated_at', $request->date);
+        } else {
+            $revenueQuery->whereDate('updated_at', today());
+        }
+        $totalRevenue = $revenueQuery->sum('total');
 
-        return view('cashier.history', compact('orders', 'totalRevenue'));
+        // Count cancelled orders for the alert
+        $cancelledQuery = Commande::kitchen()->where('status', 'annule');
+        if ($request->filled('date')) {
+            $cancelledQuery->whereDate('updated_at', $request->date);
+        } else {
+            $cancelledQuery->whereDate('updated_at', today());
+        }
+        $cancelledCount = $cancelledQuery->count();
+        $cancelledTotal = $cancelledQuery->sum('total');
+
+        return view('cashier.history', compact('orders', 'totalRevenue', 'cancelledCount', 'cancelledTotal'));
+    }
+
+    /**
+     * Cancel a paid kitchen sale from cashier history (admin only).
+     */
+    public function cancelHistorySale(Commande $commande)
+    {
+        if (!Auth::user()?->isAdmin()) {
+            abort(403, 'Seul un administrateur peut annuler une vente.');
+        }
+
+        if (!$commande->isKitchenOrder()) {
+            abort(404, 'Commande non trouvée');
+        }
+
+        if ($commande->status === 'annule') {
+            return back()->with('error', 'Cette vente est déjà annulée.');
+        }
+
+        if (!$commande->isPaid()) {
+            return back()->with('error', 'Seules les ventes payées peuvent être annulées depuis cet écran.');
+        }
+
+        DB::transaction(function () use ($commande) {
+            $commande->loadMissing(['details.produit', 'table']);
+            $stockService = app(StockService::class);
+
+            foreach ($commande->details as $detail) {
+                if (!$detail->produit) {
+                    continue;
+                }
+
+                $stockService->addStock(
+                    $detail->produit,
+                    $detail->quantity,
+                    'ajustement',
+                    $commande->id
+                );
+            }
+
+            Paiement::where('commande_id', $commande->id)->update([
+                'status' => 'refunded',
+            ]);
+
+            $commande->update(['status' => 'annule']);
+
+            if ($commande->table) {
+                $hasOtherOpenOrders = Commande::where('table_id', $commande->table_id)
+                    ->where('id', '!=', $commande->id)
+                    ->where('type', 'kitchen')
+                    ->whereNotIn('status', ['payee', 'annule'])
+                    ->exists();
+
+                if (!$hasOtherOpenOrders) {
+                    $commande->table()->update(['status' => 'free']);
+                }
+            }
+
+            $commande->logCustomAction('cancel', "Vente cuisine #{$commande->id} annulée par l'administrateur");
+        });
+
+        return redirect()
+            ->route('cashier.history', ['date' => request('date')])
+            ->with('success', 'Vente annulée avec succès. Stock restauré.');
     }
 
     /**
@@ -481,6 +596,24 @@ class CashierPosController extends Controller
         }
 
         return $this->orderService->getReadyPaymentOrdersForTable((int) $commande->table_id);
+    }
+
+    protected function reconcileOrderTotals(Collection $orders): Collection
+    {
+        return $orders->map(function (Commande $order) {
+            $order->loadMissing('details');
+
+            $detailsTotal = (float) $order->details->sum(
+                fn (CommandeDetail $detail) => ((float) $detail->price) * ((int) $detail->quantity)
+            );
+
+            if (abs(((float) $order->total) - $detailsTotal) > 0.009) {
+                $order->forceFill(['total' => $detailsTotal])->saveQuietly();
+                $order->setAttribute('total', $detailsTotal);
+            }
+
+            return $order;
+        });
     }
 
     protected function buildPaymentAllocations($paymentOrders, array $paymentData): array

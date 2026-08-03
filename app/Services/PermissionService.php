@@ -89,8 +89,8 @@ class PermissionService
      */
     public function hasPermission(User $user, string $module, string $action): bool
     {
-        // Admin has all permissions
-        if ($user->role === 'admin') {
+        // Super Admin and Super User (admin) have all permissions
+        if ($user->role === 'admin' || $user->isSuperAdmin()) {
             return true;
         }
 

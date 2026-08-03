@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Vente;
 use App\Services\PaymentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class VenteController extends Controller
 {
@@ -72,6 +73,10 @@ class VenteController extends Controller
      */
     public function cancel(Vente $vente)
     {
+        if (!Auth::user()?->isAdmin()) {
+            abort(403, 'Seul un administrateur peut annuler une vente.');
+        }
+
         if ($vente->status === 'cancelled') {
             return back()->with('error', 'Cette vente est déjà annulée.');
         }

@@ -32,7 +32,6 @@
 
     <div class="h-full w-full flex" x-data="{
         loading: false,
-        loginMode: 'admin',
         focusField: '',
         pin: '',
         appendDigit(digit) {
@@ -50,11 +49,10 @@
         }
     }"
     @keydown.window="
-        if (loginMode !== 'admin') return;
         if ($event.key >= '0' && $event.key <= '9') { appendDigit($event.key); $event.preventDefault(); }
         else if ($event.key === 'Backspace') { backspacePin(); $event.preventDefault(); }
         else if ($event.key === 'Delete') { clearPin(); $event.preventDefault(); }
-        else if ($event.key === 'Enter' && pin.length > 0 && !loading) { $refs.adminSubmit.click(); }
+        else if ($event.key === 'Enter' && pin.length > 0 && !loading) { $refs.pinSubmit.click(); }
     ">
         
         <!-- Left Section: Visual & Brand (Hidden on mobile, 45% width on desktop) -->
@@ -141,28 +139,14 @@
                     <p class="text-gray-500">Veuillez vous identifier pour accéder au terminal.</p>
                 </div>
 
-                <!-- Mode Selector (Tabs) -->
+                <!-- Single PIN login indicator (visual replacement for old mode selector) -->
                 <div class="flex p-1 bg-gray-900/50 border border-gray-800 rounded-xl mb-10 w-fit">
-                    <button 
-                        @click="loginMode = 'admin'"
-                        :class="loginMode === 'admin' ? 'bg-gray-800 text-white shadow-lg border border-gray-700' : 'text-gray-500 hover:text-gray-300'"
-                        class="px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2"
-                    >
+                    <div class="px-6 py-2.5 rounded-lg text-sm font-medium bg-gray-800 text-white shadow-lg border border-gray-700 flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
-                        Administrateur
-                    </button>
-                    <button 
-                        @click="loginMode = 'staff'"
-                        :class="loginMode === 'staff' ? 'bg-gray-800 text-white shadow-lg border border-gray-700' : 'text-gray-500 hover:text-gray-300'"
-                        class="px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2"
-                    >
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        Personnel
-                    </button>
+                        Connexion par PIN
+                    </div>
                 </div>
 
                 <!-- Alerts -->
@@ -187,22 +171,14 @@
                 <!-- Form Area -->
                 <div class="relative min-h-[460px] lg:min-h-[500px]">
                     
-                    <!-- ADMIN FORM -->
+                    <!-- PIN FORM -->
                     <form 
-                        x-show="loginMode === 'admin'" 
-                        x-transition:enter="transition ease-out duration-300"
-                        x-transition:enter-start="opacity-0 translate-y-4"
-                        x-transition:enter-end="opacity-100 translate-y-0"
-                        x-transition:leave="transition ease-in duration-200"
-                        x-transition:leave-start="opacity-100 translate-y-0"
-                        x-transition:leave-end="opacity-0 -translate-y-4"
                         method="POST" 
                         action="{{ route('login.submit') }}" 
                         @submit="loading = true"
                         class="w-full"
                     >
                         @csrf
-                        <input type="hidden" name="login_mode" value="admin">
                         
                         <div class="space-y-6">
                             <div class="group">
@@ -246,7 +222,7 @@
 
                             <button 
                                 type="submit" 
-                                x-ref="adminSubmit"
+                                x-ref="pinSubmit"
                                 class="group relative w-full flex justify-center py-4 px-4 border border-transparent text-sm font-medium rounded-xl text-black bg-white hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all duration-300 overflow-hidden"
                                 x-bind:disabled="loading || pin.length === 0"
                                 x-bind:class="(loading || pin.length === 0) ? 'opacity-50 cursor-not-allowed hover:bg-white' : ''"
@@ -256,75 +232,6 @@
                                     Déverrouiller le système
                                     <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                    </svg>
-                                </span>
-                                <span x-show="loading" class="relative flex items-center justify-center gap-2">
-                                    <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                </span>
-                            </button>
-                        </div>
-                    </form>
-
-                    <!-- STAFF FORM -->
-                    <form 
-                        x-show="loginMode === 'staff'" 
-                        x-transition:enter="transition ease-out duration-300"
-                        x-transition:enter-start="opacity-0 translate-y-4"
-                        x-transition:enter-end="opacity-100 translate-y-0"
-                        x-transition:leave="transition ease-in duration-200"
-                        x-transition:leave-start="opacity-100 translate-y-0"
-                        x-transition:leave-end="opacity-0 -translate-y-4"
-                        method="POST" 
-                        action="{{ route('login.submit') }}" 
-                        @submit="loading = true"
-                        class="w-full"
-                        x-cloak
-                    >
-                        @csrf
-                        <input type="hidden" name="login_mode" value="staff">
-                        
-                        <div class="space-y-6">
-                            <div class="space-y-6">
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-widest mb-2">Identifiant</label>
-                                    <input
-                                        type="text"
-                                        name="username"
-                                        required
-                                        value="{{ old('username') }}"
-                                        placeholder="user.name"
-                                        class="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3.5 text-white placeholder-gray-600
-                                               focus:outline-none focus:border-amber-500/50 focus:bg-gray-900 focus:ring-1 focus:ring-amber-500/50
-                                               transition-all duration-300"
-                                    >
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-widest mb-2">Mot de passe</label>
-                                    <input
-                                        type="password"
-                                        name="password"
-                                        required
-                                        placeholder="••••••••"
-                                        class="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3.5 text-white placeholder-gray-600
-                                               focus:outline-none focus:border-amber-500/50 focus:bg-gray-900 focus:ring-1 focus:ring-amber-500/50
-                                               transition-all duration-300"
-                                    >
-                                </div>
-                            </div>
-
-                            <button 
-                                type="submit" 
-                                class="group relative w-full flex justify-center py-4 px-4 border border-transparent text-sm font-medium rounded-xl text-black bg-white hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all duration-300 overflow-hidden mt-8"
-                                :disabled="loading"
-                            >
-                                <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-amber-400 to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                <span class="relative flex items-center gap-2" x-show="!loading">
-                                    Connexion Session
-                                    <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                                     </svg>
                                 </span>
                                 <span x-show="loading" class="relative flex items-center justify-center gap-2">

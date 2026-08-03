@@ -20,11 +20,20 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\CheckRole::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'force-password-reset' => \App\Http\Middleware\ForcePasswordReset::class,
+            'super-admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+            'license' => \App\Http\Middleware\EnsureLicenseActive::class,
         ]);
         
-        // Add throttle to web group for rate limiting
+        // Add custom security headers & force password reset to web group
         $middleware->web(append: [
+            \App\Http\Middleware\EnsureLicenseActive::class,
             \App\Http\Middleware\ForcePasswordReset::class,
+            \App\Http\Middleware\SecurityHeaders::class,
+        ]);
+
+        $middleware->api(append: [
+            \App\Http\Middleware\EnsureLicenseActive::class,
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

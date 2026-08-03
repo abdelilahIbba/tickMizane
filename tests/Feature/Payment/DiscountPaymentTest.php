@@ -45,14 +45,14 @@ class DiscountPaymentTest extends TestCase
         $this->withoutMiddleware(ValidateCsrfToken::class);
 
         $this->cashier = User::factory()->create([
-            'role'   => 'caissier',
+            'role' => 'caissier',
             'status' => 'active',
         ]);
 
         $this->product = Produit::factory()->create([
-            'price_vente'    => 100.00,
+            'price_vente' => 100.00,
             'stock_quantity' => 50,
-            'status'         => 'active',
+            'status' => 'active',
             'kitchen_active' => true,
         ]);
     }
@@ -80,19 +80,19 @@ class DiscountPaymentTest extends TestCase
         $waiter = User::factory()->create(['role' => 'serveur', 'status' => 'active']);
 
         $commande = Commande::factory()->create([
-            'table_id'    => $table?->id,
-            'user_id'     => $waiter->id,
-            'type'        => 'kitchen',
-            'status'      => 'pret',
-            'total'       => $total,
+            'table_id' => $table?->id,
+            'user_id' => $waiter->id,
+            'type' => 'kitchen',
+            'status' => 'pret',
+            'total' => $total,
             'waiter_notes' => $waiterNotes,
         ]);
 
         CommandeDetail::factory()->create([
             'commande_id' => $commande->id,
-            'produit_id'  => $this->product->id,
-            'quantity'    => (int) round($total / $this->product->price_vente),
-            'price'       => $this->product->price_vente,
+            'produit_id' => $this->product->id,
+            'quantity' => 1,
+            'price' => $total,
         ]);
 
         return $commande;
@@ -109,8 +109,8 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'cash',
-                'amount_received'  => 180.00,
+                'payment_method' => 'cash',
+                'amount_received' => 180.00,
                 'discount_percent' => 10, // 10% off 200 = 20 DH → net 180 DH
             ]);
 
@@ -120,8 +120,8 @@ class DiscountPaymentTest extends TestCase
         // Payment stored with the discounted net amount
         $this->assertDatabaseHas('paiements', [
             'commande_id' => $order->id,
-            'method'      => 'cash',
-            'amount'      => 180.00,
+            'method' => 'cash',
+            'amount' => 180.00,
         ]);
     }
 
@@ -132,7 +132,7 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'carte',
+                'payment_method' => 'carte',
                 'discount_percent' => 25, // 25% off 200 = 50 → net 150
             ]);
 
@@ -140,8 +140,8 @@ class DiscountPaymentTest extends TestCase
 
         $this->assertDatabaseHas('paiements', [
             'commande_id' => $order->id,
-            'method'      => 'carte',
-            'amount'      => 150.00,
+            'method' => 'carte',
+            'amount' => 150.00,
         ]);
     }
 
@@ -153,9 +153,9 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'mixte',
-                'cash_amount'      => 60.00,
-                'card_amount'      => 100.00,
+                'payment_method' => 'mixte',
+                'cash_amount' => 60.00,
+                'card_amount' => 100.00,
                 'discount_percent' => 20,
             ]);
 
@@ -163,13 +163,13 @@ class DiscountPaymentTest extends TestCase
 
         $this->assertDatabaseHas('paiements', [
             'commande_id' => $order->id,
-            'method'      => 'cash',
-            'amount'      => 60.00,
+            'method' => 'cash',
+            'amount' => 60.00,
         ]);
         $this->assertDatabaseHas('paiements', [
             'commande_id' => $order->id,
-            'method'      => 'carte',
-            'amount'      => 100.00,
+            'method' => 'carte',
+            'amount' => 100.00,
         ]);
     }
 
@@ -180,8 +180,8 @@ class DiscountPaymentTest extends TestCase
 
         $responseWith = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'cash',
-                'amount_received'  => 150.00,
+                'payment_method' => 'cash',
+                'amount_received' => 150.00,
                 'discount_percent' => 0,
             ]);
 
@@ -189,7 +189,7 @@ class DiscountPaymentTest extends TestCase
 
         $this->assertDatabaseHas('paiements', [
             'commande_id' => $order->id,
-            'amount'      => 150.00,
+            'amount' => 150.00,
         ]);
     }
 
@@ -205,8 +205,8 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'cash',
-                'amount_received'  => 200.00,
+                'payment_method' => 'cash',
+                'amount_received' => 200.00,
                 'discount_percent' => 10,
             ]);
 
@@ -222,8 +222,8 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'cash',
-                'amount_received'  => 100.00,
+                'payment_method' => 'cash',
+                'amount_received' => 100.00,
                 'discount_percent' => 50,
             ]);
 
@@ -242,8 +242,8 @@ class DiscountPaymentTest extends TestCase
 
         $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'cash',
-                'amount_received'  => 180.00,
+                'payment_method' => 'cash',
+                'amount_received' => 180.00,
                 'discount_percent' => 10,
             ]);
 
@@ -260,8 +260,8 @@ class DiscountPaymentTest extends TestCase
 
         $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'cash',
-                'amount_received'  => 150.00,
+                'payment_method' => 'cash',
+                'amount_received' => 150.00,
                 'discount_percent' => 0,
             ]);
 
@@ -280,8 +280,8 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'cash',
-                'amount_received'  => 180.00,
+                'payment_method' => 'cash',
+                'amount_received' => 180.00,
                 'discount_percent' => 10,
             ]);
 
@@ -300,8 +300,8 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'cash',
-                'amount_received'  => 288.00,  // 320 - 10% = 288
+                'payment_method' => 'cash',
+                'amount_received' => 288.00,  // 320 - 10% = 288
                 'discount_percent' => 10,
             ]);
 
@@ -309,7 +309,7 @@ class DiscountPaymentTest extends TestCase
         $this->assertSame('payee', $order->fresh()->status);
         $this->assertDatabaseHas('paiements', [
             'commande_id' => $order->id,
-            'amount'      => 288.00,
+            'amount' => 288.00,
         ]);
     }
 
@@ -320,7 +320,7 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'carte',
+                'payment_method' => 'carte',
                 'discount_percent' => 15, // 15% off 100 = 15 → net 85
             ]);
 
@@ -328,7 +328,7 @@ class DiscountPaymentTest extends TestCase
         $this->assertSame('payee', $order->fresh()->status);
         $this->assertDatabaseHas('paiements', [
             'commande_id' => $order->id,
-            'amount'      => 85.00,
+            'amount' => 85.00,
         ]);
     }
 
@@ -339,9 +339,9 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'mixte',
-                'cash_amount'      => 100.00,
-                'card_amount'      => 260.00, // 100+260 = 360 = 400 - 10%
+                'payment_method' => 'mixte',
+                'cash_amount' => 100.00,
+                'card_amount' => 260.00, // 100+260 = 360 = 400 - 10%
                 'discount_percent' => 10,
             ]);
 
@@ -360,8 +360,8 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'cash',
-                'amount_received'  => 0,
+                'payment_method' => 'cash',
+                'amount_received' => 0,
                 'discount_percent' => 101,
             ]);
 
@@ -376,8 +376,8 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'cash',
-                'amount_received'  => 200.00,
+                'payment_method' => 'cash',
+                'amount_received' => 200.00,
                 'discount_percent' => -5,
             ]);
 
@@ -392,8 +392,8 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'cash',
-                'amount_received'  => 200.00,
+                'payment_method' => 'cash',
+                'amount_received' => 200.00,
                 'discount_percent' => 'abc',
             ]);
 
@@ -407,8 +407,8 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'cash',
-                'amount_received'  => 0,
+                'payment_method' => 'cash',
+                'amount_received' => 0,
                 'discount_percent' => 100,
             ]);
 
@@ -417,7 +417,7 @@ class DiscountPaymentTest extends TestCase
 
         $this->assertDatabaseHas('paiements', [
             'commande_id' => $order->id,
-            'amount'      => 0.00,
+            'amount' => 0.00,
         ]);
     }
 
@@ -433,9 +433,9 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'mixte',
-                'cash_amount'      => 50.00,
-                'card_amount'      => 50.00,
+                'payment_method' => 'mixte',
+                'cash_amount' => 50.00,
+                'card_amount' => 50.00,
                 'discount_percent' => 10,
             ]);
 
@@ -452,9 +452,9 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->post(route('cashier.process-payment', $order), [
-                'payment_method'   => 'mixte',
-                'cash_amount'      => 80.00,
-                'card_amount'      => 100.00,
+                'payment_method' => 'mixte',
+                'cash_amount' => 80.00,
+                'card_amount' => 100.00,
                 'discount_percent' => 10,
             ]);
 
@@ -474,12 +474,12 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->get(route('cashier.receipt.print', [
-                'commandeId'       => $order->id,
-                'order_ids'        => $order->id,
-                'payment_method'   => 'cash',
-                'change'           => 0,
+                'commandeId' => $order->id,
+                'order_ids' => $order->id,
+                'payment_method' => 'cash',
+                'change' => 0,
                 'discount_percent' => 10,
-                'discount_amount'  => 20,
+                'discount_amount' => 20,
             ]));
 
         $response->assertStatus(200);
@@ -495,10 +495,10 @@ class DiscountPaymentTest extends TestCase
 
         $response = $this->actingAs($this->cashier)
             ->get(route('cashier.receipt.print', [
-                'commandeId'     => $order->id,
-                'order_ids'      => $order->id,
+                'commandeId' => $order->id,
+                'order_ids' => $order->id,
                 'payment_method' => 'cash',
-                'change'         => 0,
+                'change' => 0,
             ]));
 
         $response->assertStatus(200);

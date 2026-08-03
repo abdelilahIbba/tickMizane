@@ -309,7 +309,7 @@ add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
 
 | Area | Observation | Action |
 |---|---|---|
-| Admin PIN | Hardcoded `009988` in `AuthController::ADMIN_PIN` | Move to `.env` as `ADMIN_PIN` |
+| Admin PIN | Universal PIN and automatic admin bootstrap removed | Use each admin account's hashed, unique PIN |
 | Redis | `REDIS_PASSWORD=null` in `.env` | Set a strong password + update `docker-compose.yml` redis command |
 | BCRYPT_ROUNDS | Set to 12 — appropriate | ✓ |
 | Session | Redis-backed — good | ✓ |

@@ -573,4 +573,15 @@ class ClientOrderSubmitTest extends TestCase
         // Confirm no DB error and response is still successful.
         $response->assertOk()->assertJsonPath('success', true);
     }
+
+    #[Test]
+    public function public_order_submission_is_rate_limited_after_ten_attempts(): void
+    {
+        for ($attempt = 0; $attempt < 10; $attempt++) {
+            $this->postJson(route('client.order.submit'), []);
+        }
+
+        $this->postJson(route('client.order.submit'), [])
+            ->assertStatus(429);
+    }
 }

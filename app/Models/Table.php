@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\LogsHistorique;
+use App\Models\Zone;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -46,6 +47,7 @@ class Table extends Model
         'name',
         'places',
         'zone',
+        'zone_id',
         'status',
         'current_vente_id',
         'serveur_id',
@@ -113,6 +115,14 @@ class Table extends Model
     public function serveur(): BelongsTo
     {
         return $this->belongsTo(User::class, 'serveur_id');
+    }
+
+    /**
+     * Get the linked zone entity.
+     */
+    public function zoneEntity(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class, 'zone_id');
     }
 
     /*

@@ -2,9 +2,12 @@
 
 namespace Tests;
 
+use App\Models\License;
 use App\Models\User;
+use App\Services\LicenseService;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Schema;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -13,6 +16,34 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         $this->withoutMiddleware(ValidateCsrfToken::class);
+        $this->ensureActiveLicenseForTests();
+    }
+
+    /**
+     * Keep the majority of feature tests focused on business flows by providing
+     * a valid license unless a test explicitly revokes/expires it.
+     */
+    protected function ensureActiveLicenseForTests(): void
+    {
+        if (!Schema::hasTable('licenses')) {
+            return;
+        }
+
+        if (License::query()->currentlyValid()->exists()) {
+            return;
+        }
+
+        License::factory()->active()->create([
+            'client_name' => 'Test License',
+        ]);
+
+        app(LicenseService::class)->forgetCache();
+    }
+
+    protected function clearLicensesForTests(): void
+    {
+        License::query()->delete();
+        app(LicenseService::class)->forgetCache();
     }
 
     /**

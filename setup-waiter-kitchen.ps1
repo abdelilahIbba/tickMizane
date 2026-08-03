@@ -46,9 +46,8 @@ Write-Host "📱 Waiter Interface: http://localhost:8000/waiter" -ForegroundColo
 Write-Host "🍳 Kitchen Dashboard: http://localhost:8000/kitchen" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Test Accounts:" -ForegroundColor Yellow
-Write-Host "  Waiter 1: serveur1 / serveur123" -ForegroundColor White
-Write-Host "  Waiter 2: serveur2 / serveur123" -ForegroundColor White
-Write-Host "  Admin (Kitchen): admin / 009988" -ForegroundColor White
+Write-Host "  Temporary PINs are generated randomly by UsersSeeder." -ForegroundColor White
+Write-Host "  Save the credentials displayed by php artisan db:seed." -ForegroundColor White
 Write-Host ""
 Write-Host "📖 Full documentation: WAITER_KITCHEN_IMPLEMENTATION.md" -ForegroundColor Cyan
 Write-Host ""

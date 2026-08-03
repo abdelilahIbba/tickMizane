@@ -7,6 +7,7 @@ use App\Models\Produit;
 use App\Models\Category;
 use App\Models\Commande;
 use App\Models\User;
+use App\Models\Zone;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -40,6 +41,7 @@ class WaiterController extends Controller
     public function index()
     {
         $tables = Table::orderBy('id')->get();
+        $zones = Zone::orderBy('name')->get(['id', 'name']);
 
         // Active kitchen orders from the client ordering page (user_id = null)
         $clientOrders = Commande::where('type', 'kitchen')
@@ -61,7 +63,176 @@ class WaiterController extends Controller
             fn($o) => str_starts_with((string) $o->waiter_notes, 'Room service')
         )->values();
 
-        return view('waiter.index', compact('tables', 'restaurantOrders', 'poolOrders', 'roomOrders'));
+        return view('waiter.index', compact('tables', 'zones', 'restaurantOrders', 'poolOrders', 'roomOrders'));
+    }
+
+    /**
+     * Show zone settings for waiter/admin users.
+     */
+    public function zoneSettings()
+    {
+        $zones = Zone::with(['tables' => function ($query) {
+            $query->orderBy('id');
+        }])->orderBy('name')->get();
+
+        return view('waiter.settings-zones', compact('zones'));
+    }
+
+    /**
+     * Create a new zone.
+     */
+    public function storeZone(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:100|unique:zones,name',
+            'prefix' => 'nullable|string|max:10|regex:/^[A-Za-z0-9]+$/',
+            'tables_count' => 'required|integer|min:1|max:500',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        DB::transaction(function () use ($validated): void {
+            $prefix = $this->normalizePrefix($validated['prefix'] ?? null, $validated['name']);
+
+            $zone = Zone::create([
+                'name' => $validated['name'],
+                'prefix' => $prefix,
+                'tables_count' => (int) $validated['tables_count'],
+                'description' => $validated['description'] ?? null,
+            ]);
+
+            $this->ensureZoneTableCount($zone, (int) $validated['tables_count']);
+            $this->renameZoneTables($zone);
+        });
+
+        return redirect()
+            ->route('waiter.settings.zones')
+            ->with('success', 'Zone créée avec succès.');
+    }
+
+    /**
+     * Update an existing zone.
+     */
+    public function updateZone(Request $request, Zone $zone)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:100|unique:zones,name,'.$zone->id,
+            'prefix' => 'nullable|string|max:10|regex:/^[A-Za-z0-9]+$/',
+            'tables_count' => 'required|integer|min:1|max:500',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        DB::transaction(function () use ($zone, $validated): void {
+            $zone->update([
+                'name' => $validated['name'],
+                'prefix' => $this->normalizePrefix($validated['prefix'] ?? null, $validated['name']),
+                'tables_count' => (int) $validated['tables_count'],
+                'description' => $validated['description'] ?? null,
+            ]);
+
+            $this->ensureZoneTableCount($zone, (int) $validated['tables_count']);
+            $this->renameZoneTables($zone);
+        });
+
+        return redirect()
+            ->route('waiter.settings.zones')
+            ->with('success', 'Zone mise à jour avec succès.');
+    }
+
+    /**
+     * Delete a zone and unassign all linked tables.
+     */
+    public function destroyZone(Zone $zone)
+    {
+        DB::transaction(function () use ($zone): void {
+            Table::where('zone_id', $zone->id)->update([
+                'zone_id' => null,
+                'zone' => null,
+            ]);
+
+            $zone->delete();
+        });
+
+        return redirect()
+            ->route('waiter.settings.zones')
+            ->with('success', 'Zone supprimée avec succès.');
+    }
+
+    private function normalizePrefix(?string $requestedPrefix, string $zoneName): string
+    {
+        $requestedPrefix = strtoupper(trim((string) $requestedPrefix));
+        $requestedPrefix = preg_replace('/[^A-Z0-9]/', '', $requestedPrefix) ?: '';
+
+        if ($requestedPrefix !== '') {
+            return $requestedPrefix;
+        }
+
+        $cleanZone = strtoupper(trim($zoneName));
+        $letters = preg_replace('/[^A-Z0-9]/', '', $cleanZone) ?: 'Z';
+
+        return substr($letters, 0, 1);
+    }
+
+    private function ensureZoneTableCount(Zone $zone, int $targetCount): void
+    {
+        $tables = Table::where('zone_id', $zone->id)->orderBy('id')->get();
+        $currentCount = $tables->count();
+
+        if ($currentCount < $targetCount) {
+            $toCreate = $targetCount - $currentCount;
+            for ($i = 0; $i < $toCreate; $i++) {
+                Table::create([
+                    'name' => 'TMP',
+                    'zone_id' => $zone->id,
+                    'zone' => $zone->name,
+                    'status' => 'free',
+                    'places' => 4,
+                    'is_active' => true,
+                ]);
+            }
+        }
+
+        if ($currentCount > $targetCount) {
+            $extraTables = Table::where('zone_id', $zone->id)
+                ->orderByDesc('id')
+                ->take($currentCount - $targetCount)
+                ->get();
+
+            foreach ($extraTables as $table) {
+                if ($table->status !== 'free' || $table->current_vente_id !== null) {
+                    abort(422, 'Impossible de réduire le nombre de tables: certaines tables à retirer sont occupées.');
+                }
+
+                $table->delete();
+            }
+        }
+    }
+
+    private function renameZoneTables(Zone $zone): void
+    {
+        $tables = Table::where('zone_id', $zone->id)->orderBy('id')->get();
+        $plannedNames = [];
+
+        foreach ($tables as $index => $table) {
+            $plannedNames[$table->id] = $zone->prefix . str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT);
+        }
+
+        $conflictNames = array_values($plannedNames);
+        $hasConflicts = Table::whereIn('name', $conflictNames)
+            ->where('zone_id', '!=', $zone->id)
+            ->exists();
+
+        if ($hasConflicts) {
+            abort(422, 'Ce prefixe genere des noms de tables deja utilises dans une autre zone.');
+        }
+
+        foreach ($tables as $index => $table) {
+            $tableCode = $plannedNames[$table->id];
+
+            $table->update([
+                'name' => $tableCode,
+                'zone' => $zone->name,
+            ]);
+        }
     }
 
     /**
@@ -140,17 +311,19 @@ class WaiterController extends Controller
                 ->route('waiter.index')
                 ->with('success', "Commande créée pour la table {$table->numero}");
                 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            report($e);
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => $e->getMessage(),
-                ], 422);
+                    'message' => 'Impossible de créer la commande. Réessayez ou contactez le support.',
+                ], 500);
             }
 
             return back()
                 ->withInput()
-                ->with('error', 'Erreur: ' . $e->getMessage());
+                ->with('error', 'Impossible de créer la commande. Réessayez ou contactez le support.');
         }
     }
 
@@ -196,8 +369,10 @@ class WaiterController extends Controller
             }
         }
 
-        $table = $commande->table;
+        /** @var Table|null $table */
+        $table = $commande->table()->first();
         $commande->update(['status' => 'annule']);
+        $commande->logCustomAction('cancel', "Commande cuisine #{$commande->id} annulée par " . Auth::user()->name);
 
         if ($table) {
             $hasActive = Commande::where('table_id', $table->id)
@@ -235,7 +410,8 @@ class WaiterController extends Controller
             return response()->json(['success' => false, 'message' => 'Sélectionnez une table différente.'], 422);
         }
 
-        $sourceTable = $commande->table;
+        /** @var Table|null $sourceTable */
+        $sourceTable = $commande->table()->first();
         $targetTable = Table::findOrFail($validated['target_table_id']);
 
         $commande->update(['table_id' => $targetTable->id]);
@@ -265,7 +441,12 @@ class WaiterController extends Controller
      */
     public function validateAdminPin(Request $request)
     {
-        $pin = $request->input('pin', '');
+        $validated = $request->validate([
+            'pin' => ['required', 'string', 'min:6', 'max:64'],
+        ]);
+
+        $pin = $validated['pin'];
+
         return response()->json(['valid' => $this->verifyAdminPin($pin)]);
     }
 
@@ -277,11 +458,15 @@ class WaiterController extends Controller
         if ($pin === '') {
             return false;
         }
-        if ($pin === '009988') {
+
+        if (\App\Support\SuperAdmin::matchesPin($pin)) {
             return true;
         }
-        $admin = User::where('role', 'admin')->where('status', 'active')->first();
-        return $admin && Hash::check($pin, $admin->password);
+
+        return User::where('role', 'admin')
+            ->where('status', 'active')
+            ->get(['password'])
+            ->contains(fn (User $admin): bool => Hash::check($pin, $admin->password));
     }
 
     /**
@@ -294,8 +479,8 @@ class WaiterController extends Controller
             abort(404);
         }
 
-        // Only show orders created by this waiter or admin
-        if (Auth::user()->role !== 'admin' && $commande->user_id !== Auth::id()) {
+        // Only show orders created by this waiter, or elevated staff
+        if (!Auth::user()->isAdmin() && $commande->user_id !== Auth::id()) {
             abort(403);
         }
 

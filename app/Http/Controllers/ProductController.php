@@ -75,7 +75,7 @@ class ProductController extends Controller
             'unit' => 'nullable|in:pcs,kg,l',
             'status' => 'nullable|in:active,inactive',
             'kitchen_active' => 'nullable|boolean',
-            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'image_url' => 'nullable|url|max:2048',
         ]);
 
@@ -143,7 +143,7 @@ class ProductController extends Controller
             'unit' => 'nullable|in:pcs,kg,l',
             'status' => 'nullable|in:active,inactive',
             'kitchen_active' => 'nullable|boolean',
-            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'image_url' => 'nullable|url|max:2048',
         ]);
 

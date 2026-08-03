@@ -394,6 +394,6 @@ class CheckoutTest extends TestCase
 
         // Serveurs should not have access to POS - they get redirected
         $response->assertStatus(302);
-        $response->assertRedirect(route('tables.index'));
+        $response->assertRedirect(route('waiter.index'));
     }
 }

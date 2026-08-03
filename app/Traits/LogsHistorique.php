@@ -3,8 +3,8 @@
 namespace App\Traits;
 
 use App\Models\Historique;
+use App\Support\SuperAdmin;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Request;
 
 /**
  * LogsHistorique Trait
@@ -51,36 +51,46 @@ trait LogsHistorique
      */
     public function logHistorique(string $action, ?string $description = null): void
     {
-        $user = Auth::user();
+        $actor = Auth::user();
         $tableName = $this->getTable();
         $modelName = class_basename($this);
-        
-        // Generate description if not provided
+
         if ($description === null) {
             $description = $this->generateDescription($action, $modelName);
         }
 
-        // Get old and new values for updates
-        $oldValues = null;
-        $newValues = null;
-        
-        if ($action === 'updated') {
-            $oldValues = $this->getOriginal();
-            $newValues = $this->getChanges();
-            
-            // Remove timestamps and hidden fields
-            unset($oldValues['updated_at'], $oldValues['created_at'], $oldValues['password'], $oldValues['remember_token']);
-            unset($newValues['updated_at'], $newValues['created_at'], $newValues['password'], $newValues['remember_token']);
-        }
-
         Historique::create([
-            'user_id' => $user?->id,
-            'role' => $user?->role ?? 'system',
+            'user_id' => $this->historiqueActorId($actor),
+            'role' => $this->historiqueActorRole($actor),
             'action' => $action,
             'table_name' => $tableName,
-            'record_id' => $this->id,
+            'record_id' => $this->getKey() ?? 0,
             'description' => $description,
         ]);
+    }
+
+    /**
+     * Resolve a DB-safe actor id for historiques.user_id.
+     * Super Admin is synthetic (id 0) and must not violate the users FK.
+     */
+    protected function historiqueActorId(mixed $actor): ?int
+    {
+        if (!$actor || SuperAdmin::is($actor)) {
+            return null;
+        }
+
+        $id = $actor->getAuthIdentifier();
+
+        return is_numeric($id) && (int) $id > 0 ? (int) $id : null;
+    }
+
+    protected function historiqueActorRole(mixed $actor): string
+    {
+        if (SuperAdmin::is($actor)) {
+            return SuperAdmin::ROLE;
+        }
+
+        return $actor->role ?? 'system';
     }
 
     /**
@@ -89,8 +99,8 @@ trait LogsHistorique
     protected function generateDescription(string $action, string $modelName): string
     {
         $identifier = $this->getHistoriqueIdentifier();
-        
-        return match($action) {
+
+        return match ($action) {
             'created' => "{$modelName} '{$identifier}' créé",
             'updated' => "{$modelName} '{$identifier}' modifié",
             'deleted' => "{$modelName} '{$identifier}' supprimé",
@@ -114,27 +124,4 @@ trait LogsHistorique
     {
         $this->logHistorique($action, $description);
     }
-
-    /**
-     * Detect device type from user agent.
-     */
-    protected function detectDeviceType(?string $userAgent): string
-    {
-        if (empty($userAgent)) {
-            return 'unknown';
-        }
-
-        $userAgent = strtolower($userAgent);
-
-        if (preg_match('/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i', $userAgent)) {
-            return 'tablet';
-        }
-
-        if (preg_match('/(mobile|iphone|ipod|android|blackberry|opera mini|opera mobi|skyfire|maemo|windows phone|palm|iemobile|symbian|symbianos|fennec)/i', $userAgent)) {
-            return 'mobile';
-        }
-
-        return 'desktop';
-    }
 }
-

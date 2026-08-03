@@ -7,6 +7,7 @@ use App\Models\CommandeDetail;
 use App\Models\Fournisseur;
 use App\Models\Produit;
 use App\Models\StockMovement;
+use App\Support\SuperAdmin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -82,7 +83,7 @@ class CommandeController extends Controller
             $commande = Commande::create([
                 'reference' => $reference,
                 'fournisseur_id' => $validated['fournisseur_id'],
-                'user_id' => Auth::id(),
+                'user_id' => SuperAdmin::databaseUserId(),
                 'statut' => 'en_attente',
                 'total' => $total,
                 'notes' => $validated['notes'] ?? null,
@@ -227,7 +228,7 @@ class CommandeController extends Controller
                     'stock_apres' => $produit->stock + $detail->quantite,
                     'reference' => $commande->reference,
                     'notes' => 'Réception commande ' . $commande->reference,
-                    'user_id' => Auth::id(),
+                    'user_id' => SuperAdmin::databaseUserId(),
                 ]);
 
                 // Update product stock

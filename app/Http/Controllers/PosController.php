@@ -10,6 +10,7 @@ use App\Models\VenteDetail;
 use App\Models\StockMovement;
 use App\Models\Paiement;
 use App\Models\Table;
+use App\Support\SuperAdmin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -132,7 +133,7 @@ class PosController extends Controller
                 // For table orders: status = 'unpaid' (will be paid via encaissement)
                 // For standalone orders: status = 'paid' (paid immediately)
                 $vente = Vente::create([
-                    'user_id' => Auth::id(),
+                    'user_id' => SuperAdmin::databaseUserId(),
                     'table_id' => $request->table_id,
                     'total' => $total,
                     'payment_method' => $request->payment_method,

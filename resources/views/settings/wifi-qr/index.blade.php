@@ -53,8 +53,8 @@
                 <div>
                     <label class="text-gray-500 text-xs font-semibold uppercase tracking-wide">Lien de la page de commande</label>
                     <div class="mt-1.5 flex items-center gap-2">
-                        <div class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 font-mono text-xs text-gray-300 truncate" x-text="baseUrl + '/order'"></div>
-                        <a :href="baseUrl + '/order'" target="_blank"
+                        <div class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 font-mono text-xs text-gray-300 truncate" x-text="effectiveBaseUrl + '/order'"></div>
+                        <a :href="effectiveBaseUrl + '/order'" target="_blank"
                            class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-xl text-xs font-semibold transition-colors">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
@@ -99,6 +99,17 @@
 
             <form method="POST" action="{{ route('settings.wifi-qr.save') }}" class="space-y-4">
                 @csrf
+                {{-- Public App URL/IP --}}
+                <div>
+                    <label class="block text-gray-400 text-xs font-semibold mb-1.5 uppercase tracking-wide">IP publique / URL de l'application</label>
+                    <input type="text" name="public_base_url" x-model="baseUrl"
+                           value="{{ old('public_base_url', $publicBaseUrl) }}"
+                           placeholder="Ex: 192.168.1.50:8000 ou http://192.168.1.50:8000"
+                           class="w-full bg-gray-800 border border-gray-700 focus:border-amber-500 rounded-xl px-4 py-2.5 text-white text-sm outline-none transition-colors placeholder-gray-600">
+                    <p class="text-gray-600 text-[11px] mt-1">Cette adresse remplacera localhost dans les liens partagés et QR codes.</p>
+                    @error('public_base_url') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+
                 {{-- SSID --}}
                 <div>
                     <label class="block text-gray-400 text-xs font-semibold mb-1.5 uppercase tracking-wide">Nom du réseau (SSID)</label>
@@ -189,13 +200,13 @@
                             <span class="text-white font-bold text-sm">Restaurant</span>
                         </div>
                         <p class="text-gray-500 text-xs mb-1">Placé sur chaque table.<br>Le client entre son numéro de table.</p>
-                        <p class="text-xs font-mono text-gray-700 truncate" x-text="baseUrl + '/order?type=restaurant'"></p>
+                        <p class="text-xs font-mono text-gray-700 truncate" x-text="effectiveBaseUrl + '/order?type=restaurant'"></p>
                         <div class="flex gap-2 mt-2">
                             <a :href="orderQrUrl('restaurant')" :download="'qr-restaurant.png'"
                                class="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs font-semibold transition-colors">
                                 ⬇ DL
                             </a>
-                            <a :href="baseUrl + '/order?type=restaurant'" target="_blank"
+                            <a :href="effectiveBaseUrl + '/order?type=restaurant'" target="_blank"
                                class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-lg text-xs font-semibold transition-colors">
                                 🔗 Ouvrir
                             </a>
@@ -214,13 +225,13 @@
                             <span class="text-white font-bold text-sm">Piscine</span>
                         </div>
                         <p class="text-gray-500 text-xs mb-1">Placé près de la piscine.<br>Livraison directement à la piscine.</p>
-                        <p class="text-xs font-mono text-gray-700 truncate" x-text="baseUrl + '/order?type=pool'"></p>
+                        <p class="text-xs font-mono text-gray-700 truncate" x-text="effectiveBaseUrl + '/order?type=pool'"></p>
                         <div class="flex gap-2 mt-2">
                             <a :href="orderQrUrl('pool')" :download="'qr-piscine.png'"
                                class="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs font-semibold transition-colors">
                                 ⬇ DL
                             </a>
-                            <a :href="baseUrl + '/order?type=pool'" target="_blank"
+                            <a :href="effectiveBaseUrl + '/order?type=pool'" target="_blank"
                                class="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/20 rounded-lg text-xs font-semibold transition-colors">
                                 🔗 Ouvrir
                             </a>
@@ -239,13 +250,13 @@
                             <span class="text-white font-bold text-sm">Chambre d'hôtel</span>
                         </div>
                         <p class="text-gray-500 text-xs mb-1">Placé dans chaque chambre.<br>Le client entre son numéro de chambre.</p>
-                        <p class="text-xs font-mono text-gray-700 truncate" x-text="baseUrl + '/order?type=room'"></p>
+                        <p class="text-xs font-mono text-gray-700 truncate" x-text="effectiveBaseUrl + '/order?type=room'"></p>
                         <div class="flex gap-2 mt-2">
                             <a :href="orderQrUrl('room')" :download="'qr-chambre.png'"
                                class="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs font-semibold transition-colors">
                                 ⬇ DL
                             </a>
-                            <a :href="baseUrl + '/order?type=room'" target="_blank"
+                            <a :href="effectiveBaseUrl + '/order?type=room'" target="_blank"
                                class="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 rounded-lg text-xs font-semibold transition-colors">
                                 🔗 Ouvrir
                             </a>
@@ -324,15 +335,25 @@ function wifiQrApp() {
         password: '{{ addslashes($wifi["password"]) }}',
         security: '{{ $wifi["security"] }}',
         showPass: false,
-        baseUrl:  window.location.origin,
+        baseUrl:  '{{ addslashes($publicBaseUrl) }}',
         locations: [
             { type: 'restaurant', emoji: '🍽️', label: 'Restaurant' },
             { type: 'pool',       emoji: '🏊',  label: 'Piscine'    },
             { type: 'room',       emoji: '🏨',  label: 'Chambre'    },
         ],
 
+        get effectiveBaseUrl() {
+            const raw = (this.baseUrl || '').trim();
+            if (!raw) {
+                return window.location.origin;
+            }
+
+            const withScheme = /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
+            return withScheme.replace(/\/+$/, '');
+        },
+
         get orderPageQr() {
-            const url = encodeURIComponent(this.baseUrl + '/order');
+            const url = encodeURIComponent(this.effectiveBaseUrl + '/order');
             return 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + url + '&bgcolor=ffffff&color=000000&margin=5';
         },
 
@@ -349,7 +370,7 @@ function wifiQrApp() {
         },
 
         orderQrUrl(type) {
-            const url = encodeURIComponent(this.baseUrl + '/order?type=' + type);
+            const url = encodeURIComponent(this.effectiveBaseUrl + '/order?type=' + type);
             return 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + url + '&bgcolor=ffffff&color=000000&margin=5';
         },
     };

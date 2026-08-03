@@ -1,6 +1,33 @@
 @php
     $user = auth()->user();
     $role = $user?->role ?? 'guest';
+
+    // Explicit active patterns avoid broad prefix matches that can highlight multiple buttons.
+    $activePatterns = [
+        'dashboard' => ['dashboard'],
+        'pos' => ['pos.*'],
+        'ventes' => ['ventes.*'],
+        'tables' => ['tables.*'],
+        'waiter' => ['waiter.*'],
+        'kitchen' => ['kitchen.index', 'kitchen.order.*', 'kitchen.orders.*', 'kitchen.stats'],
+        'display' => ['kitchen.display'],
+        'commandes_en_attente' => ['cashier.show-order', 'cashier.pending-orders'],
+        'cashier' => ['cashier.pending', 'cashier.payment', 'cashier.process-payment', 'cashier.history', 'cashier.receipt', 'cashier.receipt.*', 'cashier.stats'],
+        'products' => ['products.*'],
+        'categories' => ['categories.*'],
+        'stock' => ['stock.*'],
+        'commandes' => ['commandes.*', 'orders.*'],
+        'fournisseurs' => ['fournisseurs.*'],
+        'payments' => ['payments.*'],
+        'cashier_history' => ['cashier.history'],
+        'articles' => ['settings.articles.*'],
+        'zones' => ['waiter.settings.zones*'],
+        'system' => ['settings.system.*'],
+        'users' => ['settings.users.*'],
+        'permissions' => ['settings.permissions.*'],
+        'wifi_qr' => ['settings.wifi-qr.*'],
+        'licenses' => ['settings.licenses.*'],
+    ];
     
     // Define navigation groups with labels
     $navGroups = [
@@ -49,34 +76,52 @@
             'label' => 'Paramètres',
             'items' => [
                 'articles' => ['label' => 'Articles', 'route' => 'settings.articles.index', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>'],
+                'zones' => ['label' => 'Zones', 'route' => 'waiter.settings.zones', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h8v6H3V7zm10 0h8v4h-8V7zM3 15h6v4H3v-4zm8-2h10v6H11v-6z"/>'],
                 'system' => ['label' => 'Système', 'route' => 'settings.system.index', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>'],
                 'users' => ['label' => 'Utilisateurs', 'route' => 'settings.users.index', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>'],
                 'permissions' => ['label' => 'Permissions', 'route' => 'settings.permissions.index', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>'],
                 'wifi_qr' => ['label' => 'Wi-Fi & Commande Client', 'route' => 'settings.wifi-qr.index', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>'],
+                'licenses' => ['label' => 'Licences clients', 'route' => 'settings.licenses.index', 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>'],
             ],
         ],
     ];
     
     // Role-based access
+    // Super User = admin (uses activated licenses, no license management)
+    // Super Admin = synthetic role (exclusive license management)
     $roleAccess = [
+        'super_admin' => [
+            'main' => ['dashboard'],
+            'operations' => ['waiter', 'kitchen', 'display', 'commandes_en_attente', 'cashier'],
+            'inventory' => ['products', 'categories', 'stock'],
+            'suppliers' => ['commandes', 'fournisseurs'],
+            'finance' => ['payments', 'cashier_history'],
+            'settings' => ['licenses', 'articles', 'zones', 'system', 'users', 'permissions', 'wifi_qr'],
+        ],
         'admin' => [
             'main' => ['dashboard'],
             'operations' => ['waiter', 'kitchen', 'display', 'commandes_en_attente', 'cashier'],
             'inventory' => ['products', 'categories', 'stock'],
             'suppliers' => ['commandes', 'fournisseurs'],
             'finance' => ['payments', 'cashier_history'],
-            'settings' => ['articles', 'system', 'users', 'permissions', 'wifi_qr'],
+            'settings' => ['articles', 'zones', 'system', 'users', 'permissions', 'wifi_qr'],
         ],
         'caissier' => [
-            'operations' => ['cashier'],
-            'finance' => ['payments', 'cashier_history'],
+            'operations' => ['kitchen', 'cashier'],
         ],
         'serveur' => [
-            'operations' => ['waiter'],
+            'operations' => ['waiter', 'kitchen', 'cashier'],
         ],
     ];
     
     $access = $roleAccess[$role] ?? [];
+    $roleLabel = match ($role) {
+        'super_admin' => 'Super Admin',
+        'admin' => 'Super User',
+        'caissier' => 'Caissier',
+        'serveur' => 'Serveur',
+        default => $role,
+    };
 @endphp
 
 @auth
@@ -161,16 +206,26 @@
                     <div class="space-y-1">
                         @foreach($access[$groupKey] as $key)
                             @if(isset($group['items'][$key]))
-                                @php $item = $group['items'][$key]; @endphp
+                                @php
+                                    $item = $group['items'][$key];
+                                    $patterns = $activePatterns[$key] ?? [$item['route'], $item['route'] . '.*'];
+                                    $isActive = false;
+                                    foreach ($patterns as $pattern) {
+                                        if (request()->routeIs($pattern)) {
+                                            $isActive = true;
+                                            break;
+                                        }
+                                    }
+                                @endphp
                                 <a 
                                     href="{{ Route::has($item['route']) ? route($item['route']) : '#' }}"
                                     @click="sidebarOpen = false"
                                     class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group
-                                           {{ request()->routeIs($item['route'] . '*') || request()->routeIs(explode('.', $item['route'])[0] . '.*') 
+                                           {{ $isActive
                                               ? 'bg-amber-500/20 text-amber-400 border-l-2 border-amber-400' 
                                               : 'text-gray-400 hover:text-white hover:bg-gray-800/50' }}"
                                 >
-                                    <svg class="w-5 h-5 flex-shrink-0 {{ request()->routeIs($item['route'] . '*') || request()->routeIs(explode('.', $item['route'])[0] . '.*') ? 'text-amber-400' : 'text-gray-500 group-hover:text-gray-300' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-5 h-5 flex-shrink-0 {{ $isActive ? 'text-amber-400' : 'text-gray-500 group-hover:text-gray-300' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         {!! $item['icon'] !!}
                                     </svg>
                                     <span>{{ $item['label'] }}</span>
@@ -191,7 +246,7 @@
             </div>
             <div class="min-w-0 flex-1">
                 <div class="text-sm font-medium text-white truncate">{{ $user->name }}</div>
-                <div class="text-xs text-gray-400 capitalize">{{ $user->role }}</div>
+                <div class="text-xs text-gray-400">{{ $roleLabel }}</div>
             </div>
         </div>
         

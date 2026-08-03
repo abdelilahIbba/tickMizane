@@ -26,6 +26,8 @@ use App\Http\Controllers\Settings\DocumentationController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\ClientOrderController;
 use App\Http\Controllers\Settings\WifiQrController;
+use App\Http\Controllers\Settings\LicenseController;
+use App\Http\Controllers\LicenseBlockedController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,7 +40,9 @@ Route::get('/menu/tv', [MenuController::class, 'tv'])->name('menu.tv');
 
 // Client Ordering (public — no auth required)
 Route::get('/order', [ClientOrderController::class, 'menu'])->name('client.order.menu');
-Route::post('/order/submit', [ClientOrderController::class, 'submitOrder'])->name('client.order.submit');
+Route::post('/order/submit', [ClientOrderController::class, 'submitOrder'])
+    ->middleware('throttle:10,1')
+    ->name('client.order.submit');
 
 /*
 |--------------------------------------------------------------------------
@@ -48,6 +52,9 @@ Route::post('/order/submit', [ClientOrderController::class, 'submitOrder'])->nam
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::get('/license/blocked', LicenseBlockedController::class)
+    ->middleware('auth')
+    ->name('license.blocked');
 
 /*
 |--------------------------------------------------------------------------
@@ -129,6 +136,15 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/pos/checkout', [PosController::class, 'checkout'])->name('pos.checkout');
         
         // Cashier - Pending Kitchen Orders
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Settlement Routes (Serveur + Caissier + Admin)
+    |--------------------------------------------------------------------------
+    | Validation paiement / encaissement flows
+    */
+    Route::middleware(['role:caissier,serveur'])->group(function () {
         Route::get('/cashier/pending', [CashierPosController::class, 'index'])->name('cashier.pending');
         Route::get('/cashier/order/{commande}', [CashierPosController::class, 'showOrder'])->name('cashier.show-order');
         Route::get('/cashier/order/{commande}/payment', [CashierPosController::class, 'show'])->name('cashier.payment');
@@ -137,19 +153,26 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/cashier/order/{commande}/receipt', [CashierPosController::class, 'printReceipt'])->name('cashier.receipt');
         Route::get('/cashier/pending-orders', [CashierPosController::class, 'getPendingOrders'])->name('cashier.pending-orders');
         Route::get('/cashier/stats', [CashierPosController::class, 'stats'])->name('cashier.stats');
-        
-        // Ventes (Sales)
+    });
+
+    // Ventes (Sales) - Caissier only
+    Route::middleware(['role:caissier'])->group(function () {
         Route::get('/ventes', [VenteController::class, 'index'])->name('ventes.index');
         Route::get('/ventes/{vente}', [VenteController::class, 'show'])->name('ventes.show');
-        Route::post('/ventes/{vente}/cancel', [VenteController::class, 'cancel'])->name('ventes.cancel');
         Route::post('/ventes/{vente}/payment', [VenteController::class, 'addPayment'])->name('ventes.add-payment');
         Route::get('/ventes/report', [VenteController::class, 'report'])->name('ventes.report');
         Route::get('/ventes/{vente}/receipt', [VenteController::class, 'receipt'])->name('ventes.receipt');
-        
+
         // Payments
         Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
         Route::get('/payments/report', [PaymentController::class, 'report'])->name('payments.report');
         Route::get('/payments/{payment}/receipt', [PaymentController::class, 'receipt'])->name('payments.receipt');
+    });
+
+    // Sale cancellation is strictly admin-only
+    Route::middleware(['role:admin'])->group(function () {
+        Route::post('/ventes/{vente}/cancel', [VenteController::class, 'cancel'])->name('ventes.cancel');
+        Route::post('/cashier/history/{commande}/cancel', [CashierPosController::class, 'cancelHistorySale'])->name('cashier.history.cancel');
     });
     
     /*
@@ -161,16 +184,24 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:serveur'])->group(function () {
         // Waiter Tablet Interface
         Route::get('/waiter', [WaiterController::class, 'index'])->name('waiter.index');
+        Route::get('/waiter/settings/zones', [WaiterController::class, 'zoneSettings'])->name('waiter.settings.zones');
+        Route::post('/waiter/settings/zones', [WaiterController::class, 'storeZone'])->name('waiter.settings.zones.store');
+        Route::put('/waiter/settings/zones/{zone}', [WaiterController::class, 'updateZone'])->name('waiter.settings.zones.update');
+        Route::delete('/waiter/settings/zones/{zone}', [WaiterController::class, 'destroyZone'])->name('waiter.settings.zones.destroy');
         Route::get('/waiter/table/{table}/order', [WaiterController::class, 'showTableOrder'])->name('waiter.table.order');
         Route::post('/waiter/table/{table}/order', [WaiterController::class, 'storeOrder'])->name('waiter.order.store');
         Route::get('/waiter/orders', [WaiterController::class, 'myOrders'])->name('waiter.orders');
         Route::get('/waiter/order/{commande}', [WaiterController::class, 'showOrder'])->name('waiter.order.show');
         
         // Order actions
-        Route::post('/waiter/order/{commande}/cancel', [WaiterController::class, 'cancelKitchenOrder'])->name('waiter.order.cancel');
+        Route::post('/waiter/order/{commande}/cancel', [WaiterController::class, 'cancelKitchenOrder'])
+            ->middleware('throttle:5,1')
+            ->name('waiter.order.cancel');
         Route::post('/waiter/order/{commande}/transfer', [WaiterController::class, 'transferOrder'])->name('waiter.order.transfer');
         Route::post('/waiter/order/{commande}/finalize', [WaiterController::class, 'finalizeForSettlement'])->name('waiter.order.finalize');
-        Route::post('/waiter/validate-pin', [WaiterController::class, 'validateAdminPin'])->name('waiter.validate.pin');
+        Route::post('/waiter/validate-pin', [WaiterController::class, 'validateAdminPin'])
+            ->middleware('throttle:5,1')
+            ->name('waiter.validate.pin');
 
         // AJAX endpoints
         Route::get('/waiter/category/{category}/products', [WaiterController::class, 'getProductsByCategory'])->name('waiter.category.products');
@@ -199,21 +230,39 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     | Kitchen dashboard for viewing and managing orders
     */
-    Route::middleware(['role:admin'])->group(function () {
-        // Kitchen Dashboard
+    Route::middleware(['role:admin,caissier,serveur'])->group(function () {
+        // Kitchen Dashboard (read-only for serveur)
         Route::get('/kitchen', [KitchenController::class, 'index'])->name('kitchen.index');
         Route::get('/kitchen/display', [KitchenController::class, 'display'])->name('kitchen.display');
         Route::get('/kitchen/order/{commande}', [KitchenController::class, 'show'])->name('kitchen.order.show');
-        Route::post('/kitchen/order/{commande}/status', [KitchenController::class, 'updateStatus'])->name('kitchen.order.status');
-        Route::post('/kitchen/order/{commande}/ready', [KitchenController::class, 'markReady'])->name('kitchen.order.ready');
-        Route::post('/kitchen/order/{commande}/served', [KitchenController::class, 'markServed'])->name('kitchen.order.served');
         Route::get('/kitchen/order/{commande}/ticket', [KitchenController::class, 'printTicket'])->name('kitchen.ticket');
         
         // AJAX endpoints
         Route::get('/kitchen/orders/active', [KitchenController::class, 'getActiveOrders'])->name('kitchen.orders.active');
         Route::get('/kitchen/stats', [KitchenController::class, 'stats'])->name('kitchen.stats');
 
-        // Settings - User Management
+    });
+
+    Route::middleware(['role:admin,caissier'])->group(function () {
+        // Kitchen status actions (mutating)
+        Route::post('/kitchen/order/{commande}/status', [KitchenController::class, 'updateStatus'])->name('kitchen.order.status');
+        Route::post('/kitchen/order/{commande}/ready', [KitchenController::class, 'markReady'])->name('kitchen.order.ready');
+        Route::post('/kitchen/order/{commande}/served', [KitchenController::class, 'markServed'])->name('kitchen.order.served');
+    });
+
+    // License management — Super Admin only (independent of users table)
+    Route::middleware([\App\Http\Middleware\EnsureSuperAdmin::class])
+        ->prefix('settings')
+        ->name('settings.')
+        ->group(function () {
+            Route::get('/licenses', [LicenseController::class, 'index'])->name('licenses.index');
+            Route::post('/licenses', [LicenseController::class, 'store'])->name('licenses.store');
+            Route::post('/licenses/{license}/activate', [LicenseController::class, 'activate'])->name('licenses.activate');
+            Route::post('/licenses/{license}/revoke', [LicenseController::class, 'revoke'])->name('licenses.revoke');
+        });
+
+    // Settings - User Management (Admin / Super User only)
+    Route::middleware(['role:admin'])->group(function () {
         Route::prefix('settings')->name('settings.')->group(function () {
             Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
             Route::get('/users/create', [UserManagementController::class, 'create'])->name('users.create');
