@@ -1,6 +1,6 @@
 <x-layout.app title="Commande — Table {{ $table->numero }}">
 {{-- x-data="{ activeTab: 'menu' }" initialise AlpineJS pour le basculement dynamique d'onglets sur mobile --}}
-<div class="h-[calc(100vh-4rem)] flex flex-col overflow-hidden" x-data="{ activeTab: 'menu' }">
+<div class="h-full flex flex-col overflow-hidden" x-data="{ activeTab: 'menu' }">
     <form id="orderForm" method="POST" action="{{ route('waiter.order.store', $table) }}" class="flex flex-col flex-1 overflow-hidden">
         @csrf
 
@@ -87,80 +87,138 @@
                     </div>
                 </div>
 
-                {{-- Products grid --}}
-                {{-- Grille fluide s'adaptant à l'espace restant de chaque breakpoint --}}
-                <div class="flex-1 overflow-y-auto p-4">
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4" id="productsGrid">
-                        @foreach($products as $product)
-                        <div class="product-card group relative bg-gray-900 rounded-2xl overflow-hidden border border-gray-800 cursor-pointer
-                                    hover:border-amber-500/60 hover:shadow-lg hover:shadow-amber-500/10
-                                    transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
-                             data-category="{{ $product->category_id }}"
-                             data-product-id="{{ $product->id }}"
-                             data-product-name="{{ $product->name }}"
-                             data-product-price="{{ $product->price_vente }}"
-                             data-product-image="{{ $product->display_image_url }}"
-                             data-stock="{{ $product->stock_quantity }}">
+                {{-- Products Section with Vertical Alphabet Filter Bar on Left --}}
+                <div class="flex-1 flex flex-row overflow-hidden relative">
 
-                            {{-- Product image --}}
-                            <div class="relative aspect-[4/3] overflow-hidden bg-gray-800">
-                                <img src="{{ $product->display_image_url }}"
-                                     alt="{{ $product->name }}"
-                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                     onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=400&q=80'">
+                    {{-- Vertical Alphabet Strip (A → Z) --}}
+                    <div id="alphabetBar" class="w-12 sm:w-14 bg-gray-900/90 border-r border-gray-800 flex flex-col items-center py-2 px-1 gap-1 overflow-y-auto flex-shrink-0 scrollbar-hide select-none">
+                        {{-- "TOUS" button --}}
+                        <button type="button"
+                                id="alpha-btn-all"
+                                data-letter="all"
+                                onclick="setAlphabetFilter('all')"
+                                class="alpha-btn active-alpha-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl text-[10px] sm:text-xs font-bold transition-all duration-200 flex flex-col items-center justify-center border bg-amber-500 text-gray-950 border-amber-400 shadow-md shadow-amber-500/20 active:scale-95 flex-shrink-0"
+                                title="Tous les produits">
+                            <span class="leading-none">TOUS</span>
+                        </button>
 
-                                {{-- Add overlay --}}
-                                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                                    <div class="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center shadow-lg transform scale-75 group-hover:scale-100 transition-transform duration-200">
-                                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                                        </svg>
-                                    </div>
-                                </div>
+                        <div class="w-7 h-[1px] bg-gray-800 my-1 flex-shrink-0"></div>
 
-                                {{-- Low stock badge --}}
-                                @if($product->stock_quantity <= 5)
-                                <div class="absolute top-2 left-2">
-                                    <span class="text-xs font-semibold bg-red-500/90 text-white px-2 py-0.5 rounded-full">
-                                        Stock: {{ $product->stock_quantity }}
-                                    </span>
-                                </div>
-                                @endif
-                            </div>
-
-                            {{-- Product info --}}
-                            {{-- Style compact optimisé pour mobile (paddings plus petits, tailles ajustées, hauteur fixe pour alignement) --}}
-                            <div class="p-2 sm:p-3">
-                                <h3 class="text-xs sm:text-sm font-semibold text-white leading-tight line-clamp-2 mb-1 sm:mb-1.5 h-8 sm:h-10 select-none">{{ $product->name }}</h3>
-                                <div class="flex items-center justify-between mt-1 sm:mt-2">
-                                    <span class="text-sm sm:text-base font-bold text-amber-400">{{ number_format($product->price_vente, 2) }} DH</span>
-                                    <span class="text-[10px] sm:text-xs text-gray-500">{{ $product->unit }}</span>
-                                </div>
-                            </div>
-                        </div>
+                        @foreach(range('A', 'Z') as $letter)
+                        <button type="button"
+                                id="alpha-btn-{{ $letter }}"
+                                data-letter="{{ $letter }}"
+                                onclick="setAlphabetFilter('{{ $letter }}')"
+                                class="alpha-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center border text-gray-400 bg-gray-800/60 border-gray-700/60 hover:bg-gray-700/80 hover:text-white hover:border-gray-500 active:scale-95 flex-shrink-0">
+                            {{ $letter }}
+                        </button>
                         @endforeach
                     </div>
 
-                    {{-- Empty state --}}
-                    <div id="emptyFilter" class="hidden text-center py-16 text-gray-500">
-                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        <p class="text-sm">Aucun produit dans cette catégorie</p>
+                    {{-- Products Grid & Filters Area --}}
+                    <div class="flex-1 overflow-y-auto p-3 sm:p-4 flex flex-col">
+                        {{-- Active Letter Filter Indicator Badge --}}
+                        <div id="activeLetterBanner" class="hidden mb-3 flex items-center justify-between bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2">
+                            <div class="flex items-center gap-2 text-xs text-amber-400 font-medium">
+                                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                <span>Filtre lettre :</span>
+                                <span id="activeLetterTag" class="px-2 py-0.5 bg-amber-500 text-gray-950 font-bold rounded-md text-xs">G</span>
+                                <span id="letterCountTag" class="text-gray-400 text-xs ml-1">(0 produit)</span>
+                            </div>
+                            <button type="button" onclick="setAlphabetFilter('all')" class="text-xs font-semibold text-amber-400 hover:text-amber-300 hover:underline flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                                Réinitialiser (Tous)
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4" id="productsGrid">
+                            @foreach($products as $product)
+                            <div class="product-card group relative bg-gray-900 rounded-2xl overflow-hidden border border-gray-800 cursor-pointer
+                                        hover:border-amber-500/60 hover:shadow-lg hover:shadow-amber-500/10
+                                        transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
+                                 data-category="{{ $product->category_id }}"
+                                 data-product-id="{{ $product->id }}"
+                                 data-product-name="{{ $product->name }}"
+                                 data-product-price="{{ $product->price_vente }}"
+                                 data-product-image="{{ $product->display_image_url }}"
+                                 data-stock="{{ $product->stock_quantity }}">
+
+                                {{-- Product image --}}
+                                <div class="relative aspect-[4/3] overflow-hidden bg-gray-800">
+                                    <img src="{{ $product->display_image_url }}"
+                                         alt="{{ $product->name }}"
+                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                         onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=400&q=80'">
+
+                                    {{-- Add overlay --}}
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                                        <div class="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center shadow-lg transform scale-75 group-hover:scale-100 transition-transform duration-200">
+                                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+
+                                    {{-- Low stock badge --}}
+                                    @if($product->stock_quantity <= 5)
+                                    <div class="absolute top-2 left-2">
+                                        <span class="text-xs font-semibold bg-red-500/90 text-white px-2 py-0.5 rounded-full">
+                                            Stock: {{ $product->stock_quantity }}
+                                        </span>
+                                    </div>
+                                    @endif
+                                </div>
+
+                                {{-- Product info --}}
+                                <div class="p-2 sm:p-3">
+                                    <h3 class="text-xs sm:text-sm font-semibold text-white leading-tight line-clamp-2 mb-1 sm:mb-1.5 h-8 sm:h-10 select-none">{{ $product->name }}</h3>
+                                    <div class="flex items-center justify-between mt-1 sm:mt-2">
+                                        <span class="text-sm sm:text-base font-bold text-amber-400">{{ number_format($product->price_vente, 2) }} DH</span>
+                                        <span class="text-[10px] sm:text-xs text-gray-500">{{ $product->unit }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+
+                        {{-- Empty state for category --}}
+                        <div id="emptyFilter" class="hidden text-center py-16 text-gray-500">
+                            <svg class="w-12 h-12 mx-auto mb-3 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <p class="text-sm">Aucun produit dans cette catégorie</p>
+                        </div>
+
+                        {{-- Empty state for alphabet filter --}}
+                        <div id="emptyAlphabetFilter" class="hidden text-center py-16 px-4">
+                            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-800/80 border border-gray-700/60 flex items-center justify-center text-amber-400 font-bold text-2xl shadow-inner">
+                                <span id="emptyLetterChar">G</span>
+                            </div>
+                            <h4 class="text-base font-semibold text-white mb-1">Aucun produit trouvé</h4>
+                            <p class="text-xs text-gray-400 mb-4" id="emptyLetterText">Aucun produit ne commence par la lettre "<span class="font-bold text-amber-400">G</span>"</p>
+                            <button type="button" onclick="setAlphabetFilter('all')" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-xl text-xs font-semibold hover:bg-amber-500/30 transition-all">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                                </svg>
+                                Afficher tous les produits
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
         {{-- ─────────────────── RIGHT: Commande Panel ─────────────────── --}}
         <div :class="activeTab === 'cart' ? 'flex' : 'hidden lg:flex'"
-             class="w-full lg:w-96 xl:w-[440px] flex-col bg-gray-900/60 flex-shrink-0 overflow-hidden">
+             class="w-full lg:w-96 xl:w-[440px] flex-col bg-gray-900/60 flex-shrink-0 overflow-hidden h-full">
 
             @if($existingOrder)
             {{-- ── Section 1 : Commande actuelle ── --}}
-            <div class="flex flex-col border-b border-gray-700 flex-shrink-0" style="max-height:52%">
+            <div class="flex flex-col border-b border-gray-700 flex-shrink min-h-0 max-h-[38vh] lg:max-h-[40%]">
 
                 {{-- Header commande actuelle --}}
-                <div class="px-4 py-3 bg-gray-800/80 border-b border-gray-700 flex items-center justify-between flex-shrink-0">
+                <div class="px-4 py-2.5 bg-gray-800/80 border-b border-gray-700 flex items-center justify-between flex-shrink-0">
                     <div class="flex items-center gap-2 min-w-0">
                         <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -180,7 +238,7 @@
                 </div>
 
                 {{-- Items table --}}
-                <div class="overflow-y-auto flex-1 px-3 py-2">
+                <div class="overflow-y-auto flex-1 px-3 py-1.5 min-h-0">
                     <table class="w-full text-xs">
                         <thead>
                             <tr class="text-gray-500 border-b border-gray-700/60">
@@ -211,59 +269,60 @@
                 </div>
 
                 {{-- Subtotal + actions --}}
-                <div class="flex-shrink-0 px-4 py-2.5 bg-gray-800/50 border-t border-gray-700/60">
-                    <div class="flex items-center justify-between mb-2.5">
+                <div class="flex-shrink-0 px-3 py-2 bg-gray-800/50 border-t border-gray-700/60">
+                    <div class="flex items-center justify-between mb-2">
                         <span class="text-xs text-gray-400 font-medium">Total actuel</span>
-                        <span class="text-base font-bold text-white">{{ number_format($existingOrder->total, 2) }} DH</span>
+                        <span class="text-sm font-bold text-white">{{ number_format($existingOrder->total, 2) }} DH</span>
                     </div>
-                    <div class="flex gap-2 mb-2">
+                    <div class="grid grid-cols-3 gap-1.5">
                         <button type="button"
                                 onclick="openFinalizeModal()"
-                                class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors text-xs font-semibold">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                class="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors text-xs font-semibold"
+                                title="Finaliser pour encaissement">
+                            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
-                            Finaliser
-                        </button>
-                    </div>
-                    <div class="flex gap-2">
-                        <button type="button"
-                                onclick="openCancelModal()"
-                                class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors text-xs font-semibold">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
-                            </svg>
-                            Annuler
+                            <span class="truncate">Finaliser</span>
                         </button>
                         <button type="button"
                                 onclick="openTransferModal()"
-                                class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-colors text-xs font-semibold">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                class="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-colors text-xs font-semibold"
+                                title="Transférer la commande">
+                            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
                             </svg>
-                            Transférer
+                            <span class="truncate">Transférer</span>
+                        </button>
+                        <button type="button"
+                                onclick="openCancelModal()"
+                                class="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors text-xs font-semibold"
+                                title="Annuler la commande">
+                            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                            </svg>
+                            <span class="truncate">Annuler</span>
                         </button>
                     </div>
                 </div>
             </div>
 
             {{-- Divider label --}}
-            <div class="flex items-center gap-2 px-4 py-2 flex-shrink-0 bg-gray-900/80">
+            <div class="flex items-center gap-2 px-3 py-1 flex-shrink-0 bg-gray-900/80">
                 <div class="flex-1 h-px bg-gray-700"></div>
-                <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">+ Nouveaux articles</span>
+                <span class="text-[11px] font-bold text-amber-400 uppercase tracking-wider">+ Nouveaux articles</span>
                 <div class="flex-1 h-px bg-gray-700"></div>
             </div>
             @endif
 
             {{-- ── Section 2 : Nouveau panier ── --}}
-            <div class="flex flex-col flex-1 overflow-hidden">
+            <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
 
                 {{-- Cart header --}}
                 @unless($existingOrder)
-                <div class="px-5 py-4 border-b border-gray-800 flex-shrink-0">
+                <div class="px-4 py-3 border-b border-gray-800 flex-shrink-0">
                     <div class="flex items-center justify-between">
-                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
                             Commande
@@ -272,57 +331,57 @@
                     </div>
                 </div>
                 @else
-                <div class="px-4 py-2 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Panier</span>
+                <div class="px-3 py-1.5 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
+                    <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Panier</span>
                     <span id="cartCount" class="hidden text-xs bg-amber-500 text-black font-bold px-2 py-0.5 rounded-full">0</span>
                 </div>
                 @endunless
 
                 {{-- Cart items --}}
-                <div class="flex-1 overflow-y-auto px-4 py-3">
-                    <div id="emptyCart" class="flex flex-col items-center justify-center h-full text-gray-600 py-8">
-                        <svg class="w-12 h-12 mb-2 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex-1 overflow-y-auto px-3 py-2 min-h-0">
+                    <div id="emptyCart" class="flex flex-col items-center justify-center h-full text-gray-600 {{ $existingOrder ? 'py-2' : 'py-6' }}">
+                        <svg class="{{ $existingOrder ? 'w-7 h-7 mb-1' : 'w-10 h-10 mb-2' }} text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
-                        <p class="text-sm font-medium text-gray-500">Panier vide</p>
-                        <p class="text-xs text-gray-600 mt-0.5">Sélectionnez des produits</p>
+                        <p class="text-xs font-medium text-gray-500">Panier vide</p>
+                        <p class="text-[11px] text-gray-600 mt-0.5">Sélectionnez des produits</p>
                     </div>
                     <div id="cartItems" class="space-y-2 hidden"></div>
                 </div>
 
                 {{-- Cart footer --}}
-                <div class="flex-shrink-0 border-t border-gray-800 p-4 space-y-3">
+                <div class="flex-shrink-0 border-t border-gray-800 p-3 space-y-2.5 bg-gray-900/95">
                     <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1.5">Instructions générales</label>
+                        <label class="block text-[11px] font-medium text-gray-400 mb-1">Instructions générales</label>
                         <textarea name="waiter_notes"
-                                  rows="2"
-                                  class="w-full px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded-lg text-sm
-                                         focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 placeholder-gray-600 resize-none"
+                                  rows="1"
+                                  class="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 text-white rounded-lg text-xs
+                                         focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 placeholder-gray-600 resize-none transition-all focus:rows-2"
                                   placeholder="Notes pour la cuisine..."></textarea>
                     </div>
-                    <div class="flex items-center justify-between py-2 border-t border-gray-800">
-                        <span class="text-sm font-semibold text-gray-400">
+                    <div class="flex items-center justify-between py-1 border-t border-gray-800/80">
+                        <span class="text-xs font-semibold text-gray-400">
                             @if($existingOrder) Ajout @else Total @endif
                         </span>
-                        <span id="cartTotal" class="text-xl font-bold text-amber-400">0.00 DH</span>
+                        <span id="cartTotal" class="text-lg font-bold text-amber-400">0.00 DH</span>
                     </div>
                     @if($existingOrder)
-                    <div class="flex items-center justify-between -mt-1 pb-1">
-                        <span class="text-xs text-gray-500">Total cumulé</span>
-                        <span id="grandTotal" class="text-sm font-bold text-gray-300">{{ number_format($existingOrder->total, 2) }} DH</span>
+                    <div class="flex items-center justify-between -mt-1 pb-0.5 text-xs">
+                        <span class="text-gray-500">Total cumulé</span>
+                        <span id="grandTotal" class="font-bold text-gray-300">{{ number_format($existingOrder->total, 2) }} DH</span>
                     </div>
                     @endif
                     <button type="submit"
                             id="submitOrder"
                             disabled
-                            class="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-sm
+                            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm
                                    bg-amber-500 text-black hover:bg-amber-400
                                    disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed
-                                   transition-all duration-150 shadow-lg shadow-amber-500/20">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                   transition-all duration-150 shadow-lg shadow-amber-500/20 flex-shrink-0">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
                         </svg>
-                        {{ $existingOrder ? 'Ajouter à la commande' : 'Envoyer à la cuisine' }}
+                        <span>{{ $existingOrder ? 'Ajouter à la commande' : 'Envoyer à la cuisine' }}</span>
                     </button>
                 </div>
             </div>
@@ -556,7 +615,121 @@ const transferUrl = '{{ route("waiter.order.transfer", $existingOrder) }}';
 @endif
 const csrfToken = document.querySelector('input[name="_token"]').value;
 
-/* ── Category filtering ─────────────────────── */
+/* ── Category & Alphabet filtering ──────────── */
+let currentCategory = 'all';
+let currentLetter = 'all';
+
+function normalizeStr(str) {
+    if (!str) return '';
+    return str.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+}
+
+window.setAlphabetFilter = function (letter) {
+    if (letter === currentLetter && letter !== 'all') {
+        currentLetter = 'all';
+    } else {
+        currentLetter = letter;
+    }
+    applyCombinedFilters();
+};
+
+function applyCombinedFilters() {
+    let visibleCount = 0;
+    
+    document.querySelectorAll('.product-card').forEach(card => {
+        const cardCat = card.dataset.category;
+        const cardName = card.dataset.productName || '';
+        const normalizedName = normalizeStr(cardName);
+        
+        const matchCategory = currentCategory === 'all' || cardCat === currentCategory;
+        const matchLetter = currentLetter === 'all' || normalizedName.startsWith(currentLetter);
+        
+        const show = matchCategory && matchLetter;
+        card.classList.toggle('hidden', !show);
+        if (show) visibleCount++;
+    });
+
+    // Update Alphabet bar active styles
+    document.querySelectorAll('.alpha-btn').forEach(btn => {
+        const letter = btn.dataset.letter || 'all';
+        const isActive = (letter === currentLetter) || (letter === 'all' && currentLetter === 'all');
+        
+        if (isActive) {
+            btn.classList.add('bg-amber-500', 'text-gray-950', 'border-amber-400', 'shadow-md', 'shadow-amber-500/20', 'scale-105');
+            btn.classList.remove('text-gray-400', 'bg-gray-800/60', 'border-gray-700/60');
+        } else {
+            btn.classList.remove('bg-amber-500', 'text-gray-950', 'border-amber-400', 'shadow-md', 'shadow-amber-500/20', 'scale-105');
+            btn.classList.add('text-gray-400', 'bg-gray-800/60', 'border-gray-700/60');
+        }
+    });
+
+    // Active letter banner indicator
+    const banner = document.getElementById('activeLetterBanner');
+    const tag = document.getElementById('activeLetterTag');
+    const countTag = document.getElementById('letterCountTag');
+    if (banner && tag && countTag) {
+        if (currentLetter !== 'all') {
+            tag.textContent = currentLetter;
+            countTag.textContent = `(${visibleCount} ${visibleCount > 1 ? 'produits' : 'produit'})`;
+            banner.classList.remove('hidden');
+        } else {
+            banner.classList.add('hidden');
+        }
+    }
+
+    // Empty states handling
+    const emptyCat = document.getElementById('emptyFilter');
+    const emptyAlpha = document.getElementById('emptyAlphabetFilter');
+
+    if (visibleCount === 0) {
+        if (currentLetter !== 'all') {
+            if (emptyCat) emptyCat.classList.add('hidden');
+            if (emptyAlpha) {
+                document.getElementById('emptyLetterChar').textContent = currentLetter;
+                document.getElementById('emptyLetterText').innerHTML = `Aucun produit ne commence par la lettre "<span class="font-bold text-amber-400">${currentLetter}</span>"`;
+                emptyAlpha.classList.remove('hidden');
+            }
+        } else {
+            if (emptyAlpha) emptyAlpha.classList.add('hidden');
+            if (emptyCat) emptyCat.classList.remove('hidden');
+        }
+    } else {
+        if (emptyCat) emptyCat.classList.add('hidden');
+        if (emptyAlpha) emptyAlpha.classList.add('hidden');
+    }
+
+    updateAlphabetAvailability();
+}
+
+function updateAlphabetAvailability() {
+    const lettersWithProducts = new Set();
+
+    document.querySelectorAll('.product-card').forEach(card => {
+        const cardCat = card.dataset.category;
+        if (currentCategory === 'all' || cardCat === currentCategory) {
+            const name = card.dataset.productName;
+            if (name) {
+                const firstChar = normalizeStr(name)[0];
+                if (firstChar >= 'A' && firstChar <= 'Z') {
+                    lettersWithProducts.add(firstChar);
+                }
+            }
+        }
+    });
+
+    document.querySelectorAll('.alpha-btn[data-letter]').forEach(btn => {
+        const letter = btn.dataset.letter;
+        if (letter === 'all') return;
+        const hasProducts = lettersWithProducts.has(letter);
+        if (hasProducts) {
+            btn.classList.remove('opacity-30', 'border-gray-800/40', 'text-gray-600', 'bg-gray-900/30', 'cursor-not-allowed', 'pointer-events-none');
+        } else {
+            btn.classList.add('opacity-30', 'border-gray-800/40', 'text-gray-600', 'bg-gray-900/30', 'cursor-not-allowed', 'pointer-events-none');
+            btn.classList.remove('bg-amber-500', 'text-gray-950', 'border-amber-400', 'shadow-md', 'shadow-amber-500/20', 'scale-105');
+        }
+    });
+}
+
 const tabs = document.querySelectorAll('.category-tab');
 tabs.forEach(tab => {
     tab.addEventListener('click', function () {
@@ -574,15 +747,14 @@ tabs.forEach(tab => {
         if (sp) { sp.classList.add('text-amber-400'); sp.classList.remove('text-gray-300'); }
         const imgDiv = this.querySelector('div');
         if (imgDiv) { imgDiv.classList.add('border-amber-500'); imgDiv.classList.remove('border-gray-600'); }
-        const cat = this.dataset.category;
-        let visible = 0;
-        document.querySelectorAll('.product-card').forEach(card => {
-            const show = cat === 'all' || card.dataset.category === cat;
-            card.classList.toggle('hidden', !show);
-            if (show) visible++;
-        });
-        document.getElementById('emptyFilter').classList.toggle('hidden', visible > 0);
+        
+        currentCategory = this.dataset.category;
+        applyCombinedFilters();
     });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateAlphabetAvailability();
 });
 
 /* ── Open product modal ─────────────────────── */

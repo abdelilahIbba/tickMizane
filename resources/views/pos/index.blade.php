@@ -89,40 +89,98 @@
                 </div>
             </div>
             
-            {{-- Products Grid --}}
-            <div class="flex-1 overflow-y-auto p-4">
-                {{-- Grille fluide s'adaptant à l'espace restant de chaque breakpoint --}}
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4">
-                    <template x-for="product in filteredProducts" :key="product.id">
-                        <div 
-                            @click="addToCart(product)"
-                            class="bg-gray-800 border border-gray-700 rounded-2xl overflow-hidden hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 cursor-pointer group flex flex-col"
-                        >
-                            {{-- Product Image --}}
-                            <div class="aspect-[4/3] sm:aspect-square bg-gray-900 flex items-center justify-center flex-shrink-0">
-                                <svg class="w-10 h-10 sm:w-16 sm:h-16 text-gray-700 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                </svg>
-                            </div>
-                            
-                            {{-- Product Info --}}
-                            <div class="p-2 sm:p-4 flex-1 flex flex-col justify-between">
-                                <h3 class="text-xs sm:text-sm font-semibold text-white line-clamp-2 h-8 sm:h-10 group-hover:text-amber-400 transition-colors select-none" x-text="product.name"></h3>
-                                <div class="flex items-center justify-between mt-1 sm:mt-2">
-                                    <span class="text-sm sm:text-lg font-bold text-amber-400" x-text="product.price.toFixed(2) + ' DH'"></span>
-                                    <span class="text-[10px] sm:text-sm text-gray-400" x-text="'Stock: ' + product.stock"></span>
-                                </div>
-                            </div>
-                        </div>
+            {{-- Products Section with Vertical Alphabet Strip on Left --}}
+            <div class="flex-1 flex flex-row overflow-hidden relative">
+
+                {{-- Vertical Alphabet Strip (A → Z) --}}
+                <div class="w-12 sm:w-14 bg-gray-900/90 border-r border-gray-800 flex flex-col items-center py-2 px-1 gap-1 overflow-y-auto flex-shrink-0 scrollbar-hide select-none">
+                    {{-- "TOUS" button --}}
+                    <button type="button"
+                            @click="setLetter('all')"
+                            :class="selectedLetter === 'all' ? 'bg-amber-500 text-gray-950 border-amber-400 shadow-md shadow-amber-500/20 scale-105' : 'text-gray-400 bg-gray-800/60 border-gray-700/60 hover:bg-gray-700/80 hover:text-white'"
+                            class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl text-[10px] sm:text-xs font-bold transition-all duration-200 flex flex-col items-center justify-center border active:scale-95 flex-shrink-0"
+                            title="Tous les produits">
+                        <span class="leading-none">TOUS</span>
+                    </button>
+
+                    <div class="w-7 h-[1px] bg-gray-800 my-1 flex-shrink-0"></div>
+
+                    <template x-for="letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')" :key="letter">
+                        <button type="button"
+                                @click="setLetter(letter)"
+                                :disabled="!lettersWithProducts.has(letter)"
+                                :class="{
+                                    'bg-amber-500 text-gray-950 border-amber-400 shadow-md shadow-amber-500/20 scale-105': selectedLetter === letter,
+                                    'text-gray-400 bg-gray-800/60 border-gray-700/60 hover:bg-gray-700/80 hover:text-white': selectedLetter !== letter && lettersWithProducts.has(letter),
+                                    'opacity-30 border-gray-800/40 text-gray-600 bg-gray-900/30 cursor-not-allowed': !lettersWithProducts.has(letter)
+                                }"
+                                class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center border active:scale-95 flex-shrink-0"
+                                x-text="letter">
+                        </button>
                     </template>
                 </div>
-                
-                {{-- Empty State --}}
-                <div x-show="filteredProducts.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
-                    <svg class="w-16 h-16 text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <p class="text-gray-400 text-lg">Aucun produit trouvé</p>
+
+                {{-- Products Grid Area --}}
+                <div class="flex-1 overflow-y-auto p-4 flex flex-col">
+                    {{-- Active Letter Filter Indicator Badge --}}
+                    <div x-show="selectedLetter !== 'all'" class="mb-3 flex items-center justify-between bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2">
+                        <div class="flex items-center gap-2 text-xs text-amber-400 font-medium">
+                            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                            <span>Filtre lettre :</span>
+                            <span class="px-2 py-0.5 bg-amber-500 text-gray-950 font-bold rounded-md text-xs" x-text="selectedLetter"></span>
+                            <span class="text-gray-400 text-xs ml-1" x-text="'(' + filteredProducts.length + ' ' + (filteredProducts.length > 1 ? 'produits' : 'produit') + ')'"></span>
+                        </div>
+                        <button type="button" @click="setLetter('all')" class="text-xs font-semibold text-amber-400 hover:text-amber-300 hover:underline flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                            Réinitialiser (Tous)
+                        </button>
+                    </div>
+
+                    {{-- Grille fluide s'adaptant à l'espace restant de chaque breakpoint --}}
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4">
+                        <template x-for="product in filteredProducts" :key="product.id">
+                            <div 
+                                @click="addToCart(product)"
+                                class="bg-gray-800 border border-gray-700 rounded-2xl overflow-hidden hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 cursor-pointer group flex flex-col"
+                            >
+                                {{-- Product Image --}}
+                                <div class="aspect-[4/3] sm:aspect-square bg-gray-900 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-10 h-10 sm:w-16 sm:h-16 text-gray-700 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                    </svg>
+                                </div>
+                                
+                                {{-- Product Info --}}
+                                <div class="p-2 sm:p-4 flex-1 flex flex-col justify-between">
+                                    <h3 class="text-xs sm:text-sm font-semibold text-white line-clamp-2 h-8 sm:h-10 group-hover:text-amber-400 transition-colors select-none" x-text="product.name"></h3>
+                                    <div class="flex items-center justify-between mt-1 sm:mt-2">
+                                        <span class="text-sm sm:text-lg font-bold text-amber-400" x-text="product.price.toFixed(2) + ' DH'"></span>
+                                        <span class="text-[10px] sm:text-sm text-gray-400" x-text="'Stock: ' + product.stock"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    
+                    {{-- Empty State --}}
+                    <div x-show="filteredProducts.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
+                        <template x-if="selectedLetter !== 'all'">
+                            <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-amber-400 font-bold text-2xl" x-text="selectedLetter"></div>
+                        </template>
+                        <template x-if="selectedLetter === 'all'">
+                            <svg class="w-16 h-16 text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </template>
+                        <p class="text-gray-400 text-lg" x-text="selectedLetter !== 'all' ? 'Aucun produit ne commence par la lettre \'' + selectedLetter + '\'' : 'Aucun produit trouvé'"></p>
+                        <template x-if="selectedLetter !== 'all'">
+                            <button type="button" @click="setLetter('all')" class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-xl text-xs font-semibold hover:bg-amber-500/30 transition-all">
+                                Afficher tous les produits
+                            </button>
+                        </template>
+                    </div>
                 </div>
             </div>
         </div>
@@ -312,22 +370,44 @@
             return {
                 search: '',
                 selectedCategory: null,
+                selectedLetter: 'all',
                 paymentMethod: 'cash',
                 cart: [],
                 loading: false,
-                // activeTab gère l'affichage dynamique (Menu vs Panier) sur smartphone/tablette via AlpineJS
                 activeTab: 'menu',
                 
                 categories: {!! json_encode($categoriesJson) !!},
                 
                 products: {!! json_encode($productsJson) !!},
+
+                get lettersWithProducts() {
+                    const set = new Set();
+                    this.products.forEach(p => {
+                        if (p.stock > 0 && (this.selectedCategory === null || p.category_id === this.selectedCategory)) {
+                            const norm = (p.name || '').trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                            const char = norm[0];
+                            if (char >= 'A' && char <= 'Z') set.add(char);
+                        }
+                    });
+                    return set;
+                },
                 
                 get filteredProducts() {
                     return this.products.filter(p => {
                         const matchSearch = this.search === '' || p.name.toLowerCase().includes(this.search.toLowerCase());
                         const matchCategory = this.selectedCategory === null || p.category_id === this.selectedCategory;
-                        return matchSearch && matchCategory && p.stock > 0;
+                        const normName = (p.name || '').trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                        const matchLetter = this.selectedLetter === 'all' || normName.startsWith(this.selectedLetter);
+                        return matchSearch && matchCategory && matchLetter && p.stock > 0;
                     });
+                },
+
+                setLetter(letter) {
+                    if (this.selectedLetter === letter && letter !== 'all') {
+                        this.selectedLetter = 'all';
+                    } else {
+                        this.selectedLetter = letter;
+                    }
                 },
                 
                 get subtotal() {
