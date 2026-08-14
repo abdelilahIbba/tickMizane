@@ -420,7 +420,9 @@ class Commande extends Model
      */
     public function recalculateTotal(): void
     {
-        $total = $this->details()->selectRaw('SUM(quantity * price) as total')->value('total') ?? 0;
+        // Avoid value('total'): Eloquent's value() replaces the select list with the
+        // column name, so an alias of "total" never reads the SUM on PostgreSQL.
+        $total = (float) $this->details()->sum(\DB::raw('quantity * price'));
         $this->update(['total' => $total]);
     }
 

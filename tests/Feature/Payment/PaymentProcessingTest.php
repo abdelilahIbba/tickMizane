@@ -281,17 +281,20 @@ class PaymentProcessingTest extends TestCase
     #[Test]
     public function cash_payment_calculates_correct_change()
     {
-        
         $response = $this->actingAs($this->cashier)
-            ->post(route('cashier.process-payment', $this->order), [
+            ->postJson(route('cashier.process-payment', $this->order), [
                 'payment_method' => 'cash',
                 'amount_received' => 200.00,
             ]);
 
-        $response->assertSessionHas('success');
-        
-        // Change should be 50.00 (200 - 150)
-        // This would be calculated in the controller if exposed
+        $response->assertOk()
+            ->assertJsonPath('success', true);
+
+        $printUrl = (string) $response->json('print_url');
+        parse_str(parse_url($printUrl, PHP_URL_QUERY) ?? '', $query);
+        $this->assertEquals(50.0, (float) ($query['change'] ?? -1));
+
+        $this->assertSame('payee', $this->order->fresh()->status);
     }
 
     #[Test]
