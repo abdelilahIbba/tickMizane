@@ -67,54 +67,13 @@
     {{-- ══════════════════════════════════════
          TAB: TABLES
     ══════════════════════════════════════ --}}
-    <div x-show="tab==='tables'" x-transition x-data="{ zone: 'all' }">
+    <div x-show="tab==='tables'" x-transition>
 
-        {{-- Zone filter buttons --}}
-        <div class="flex flex-wrap gap-2 mb-4">
-            <button @click="zone='all'"
-                    :class="zone==='all' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'"
-                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all">
-                🏠 Toutes
-                <span class="opacity-70">({{ $tables->count() }})</span>
-            </button>
-            <button @click="zone='Restaurant'"
-                    :class="zone==='Restaurant' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'"
-                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all">
-                🍽️ Restaurant RDC
-                <span class="opacity-70">({{ $tables->where('zone','Restaurant')->count() }})</span>
-            </button>
-            <button @click="zone='Restaurant Étage 2'"
-                    :class="zone==='Restaurant Étage 2' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'"
-                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all">
-                🍽️ Étage 2
-                <span class="opacity-70">({{ $tables->where('zone','Restaurant Étage 2')->count() }})</span>
-            </button>
-            <button @click="zone='Terrasse'"
-                    :class="zone==='Terrasse' ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'"
-                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all">
-                ☀️ Terrasse
-                <span class="opacity-70">({{ $tables->where('zone','Terrasse')->count() }})</span>
-            </button>
-            <button @click="zone='Salon'"
-                    :class="zone==='Salon' ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'"
-                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all">
-                🛋️ Salon
-                <span class="opacity-70">({{ $tables->where('zone','Salon')->count() }})</span>
-            </button>
-            <button @click="zone='Piscine'"
-                    :class="zone==='Piscine' ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500'"
-                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all">
-                🏊 Piscine
-                <span class="opacity-70">({{ $tables->where('zone','Piscine')->count() }})</span>
-            </button>
-        </div>
-
-        {{-- Zone label --}}
+        {{-- Status legend --}}
         <div class="flex flex-wrap gap-4 mb-4 p-4 bg-slate-900 rounded-2xl border border-slate-800">
             <div class="flex items-center gap-2"><div class="w-3 h-3 bg-emerald-500 rounded-full"></div><span class="text-xs text-slate-400">Disponible</span></div>
             <div class="flex items-center gap-2"><div class="w-3 h-3 bg-red-500 rounded-full"></div><span class="text-xs text-slate-400">Occupée</span></div>
             <div class="flex items-center gap-2"><div class="w-3 h-3 bg-amber-500 rounded-full"></div><span class="text-xs text-slate-400">Réservée</span></div>
-            <div class="ml-auto text-xs text-slate-500 font-semibold" x-text="zone === 'all' ? 'Toutes les zones' : zone"></div>
         </div>
 
         <div class="flex flex-wrap gap-2 mb-5">
