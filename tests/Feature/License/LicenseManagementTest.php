@@ -135,6 +135,43 @@ class LicenseManagementTest extends TestCase
     }
 
     #[Test]
+    public function checking_lifetime_option_creates_and_activates_license_without_expiration(): void
+    {
+        $this->clearLicensesForTests();
+
+        $this->actingAs(SuperAdmin::make())
+            ->post(route('settings.licenses.store'), [
+                'client_name' => 'Riad Lifetime',
+                'is_lifetime' => '1',
+                'activate_now' => '1',
+            ])
+            ->assertRedirect(route('settings.licenses.index'));
+
+        $license = License::query()->where('client_name', 'Riad Lifetime')->firstOrFail();
+
+        $this->assertSame(License::PERIOD_LIFETIME, $license->period);
+        $this->assertTrue($license->is_activated);
+        $this->assertSame(License::STATUS_ACTIVE, $license->status);
+        $this->assertNull($license->expires_at);
+        $this->assertTrue($license->isLifetime());
+        $this->assertTrue($license->isCurrentlyValid());
+    }
+
+    #[Test]
+    public function lifetime_license_is_never_marked_expired(): void
+    {
+        $this->clearLicensesForTests();
+
+        $license = License::factory()->lifetime()->create();
+
+        $this->assertSame(0, app(\App\Services\LicenseService::class)->markExpiredLicenses());
+
+        $license->refresh();
+        $this->assertSame(License::STATUS_ACTIVE, $license->status);
+        $this->assertTrue($license->isCurrentlyValid());
+    }
+
+    #[Test]
     public function expired_license_blocks_authenticated_non_super_admin_access(): void
     {
         $this->clearLicensesForTests();

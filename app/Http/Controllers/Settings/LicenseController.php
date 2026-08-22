@@ -35,14 +35,19 @@ class LicenseController extends Controller
     {
         $validated = $request->validate([
             'client_name' => ['required', 'string', 'max:255'],
-            'period' => ['required', Rule::in(array_keys($this->licenseService->periods()))],
+            'is_lifetime' => ['nullable', 'boolean'],
+            'period' => ['required_unless:is_lifetime,1', Rule::in(array_keys($this->licenseService->periods()))],
             'notes' => ['nullable', 'string', 'max:1000'],
             'activate_now' => ['nullable', 'boolean'],
         ]);
 
+        $period = $request->boolean('is_lifetime')
+            ? License::PERIOD_LIFETIME
+            : $validated['period'];
+
         $license = $this->licenseService->create(
             $validated['client_name'],
-            $validated['period'],
+            $period,
             $validated['notes'] ?? null,
         );
 
@@ -69,9 +74,15 @@ class LicenseController extends Controller
                 ->with('error', $exception->getMessage());
         }
 
+        $license = $license->fresh();
+
+        $message = $license->isLifetime()
+            ? 'Licence activée en mode Lifetime (sans date d\'expiration).'
+            : 'Licence activée jusqu\'au '.$license->expires_at?->format('d/m/Y H:i').'.';
+
         return redirect()
             ->route('settings.licenses.index')
-            ->with('success', 'Licence activée jusqu\'au '.$license->fresh()->expires_at?->format('d/m/Y H:i').'.');
+            ->with('success', $message);
     }
 
     public function revoke(License $license)

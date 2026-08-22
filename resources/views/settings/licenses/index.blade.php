@@ -35,7 +35,13 @@
                     </div>
                     <div>
                         <dt class="text-gray-400">Expire le</dt>
-                        <dd class="text-amber-300">{{ $current->expires_at?->format('d/m/Y H:i') }}</dd>
+                        <dd class="text-amber-300">
+                            @if($current->isLifetime())
+                                À vie (jamais)
+                            @else
+                                {{ $current->expires_at?->format('d/m/Y H:i') }}
+                            @endif
+                        </dd>
                     </div>
                 </dl>
             @else
@@ -71,9 +77,11 @@
                         id="period"
                         name="period"
                         required
-                        class="w-full rounded-lg bg-gray-950 border border-gray-700 text-white px-3 py-2"
+                        class="w-full rounded-lg bg-gray-950 border border-gray-700 text-white px-3 py-2 disabled:opacity-50"
+                        @if(old('is_lifetime')) disabled @endif
                     >
                         @foreach($periods as $value => $label)
+                            @continue($value === \App\Models\License::PERIOD_LIFETIME)
                             <option value="{{ $value }}" @selected(old('period') === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
@@ -81,6 +89,19 @@
                         <p class="text-red-400 text-sm mt-1">{{ $message }}</p>
                     @enderror
                 </div>
+
+                <label class="flex items-center gap-2 text-sm text-gray-300">
+                    <input
+                        type="checkbox"
+                        id="is_lifetime"
+                        name="is_lifetime"
+                        value="1"
+                        class="rounded border-gray-600 bg-gray-950"
+                        @checked(old('is_lifetime'))
+                        onchange="document.getElementById('period').disabled = this.checked; document.getElementById('period').required = !this.checked;"
+                    >
+                    Lifetime License (licence à vie, sans date d’expiration)
+                </label>
 
                 <div>
                     <label for="notes" class="block text-sm text-gray-300 mb-1">Notes (optionnel)</label>
@@ -99,6 +120,7 @@
 
                 <p class="text-xs text-gray-500">
                     Sans activation, la licence reste inactive et le client ne peut pas utiliser le système.
+                    Une licence Lifetime, une fois activée, ne sera jamais marquée comme expirée.
                 </p>
 
                 <button type="submit" class="inline-flex items-center px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-gray-900 font-semibold">
@@ -142,7 +164,11 @@
                                 {{ $license->activated_at?->format('d/m/Y H:i') ?? '—' }}
                             </td>
                             <td class="px-4 py-3 text-gray-300">
-                                {{ $license->expires_at?->format('d/m/Y H:i') ?? '—' }}
+                                @if($license->isLifetime())
+                                    <span class="text-emerald-300">À vie</span>
+                                @else
+                                    {{ $license->expires_at?->format('d/m/Y H:i') ?? '—' }}
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-right space-x-2">
                                 @if(!$license->isCurrentlyValid() && $license->status !== 'revoked')

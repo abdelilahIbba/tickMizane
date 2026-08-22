@@ -53,4 +53,15 @@ class LicenseFactory extends Factory
             'expires_at' => now()->subDay(),
         ]);
     }
+
+    public function lifetime(): static
+    {
+        return $this->state(fn () => [
+            'period' => License::PERIOD_LIFETIME,
+            'status' => License::STATUS_ACTIVE,
+            'is_activated' => true,
+            'activated_at' => now()->subHour(),
+            'expires_at' => null,
+        ]);
+    }
 }

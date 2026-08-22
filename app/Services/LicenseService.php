@@ -143,7 +143,7 @@ class LicenseService
         return $updated;
     }
 
-    public function expiresAtForPeriod(string $period, ?Carbon $from = null): Carbon
+    public function expiresAtForPeriod(string $period, ?Carbon $from = null): ?Carbon
     {
         $from ??= now();
 
@@ -151,6 +151,7 @@ class LicenseService
             License::PERIOD_1_WEEK => $from->copy()->addWeek(),
             License::PERIOD_2_WEEKS => $from->copy()->addWeeks(2),
             License::PERIOD_1_MONTH => $from->copy()->addMonth(),
+            License::PERIOD_LIFETIME => null,
             default => throw new InvalidArgumentException('Période de licence invalide.'),
         };
     }
