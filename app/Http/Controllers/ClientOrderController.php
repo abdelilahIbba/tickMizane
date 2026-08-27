@@ -124,6 +124,8 @@ class ClientOrderController extends Controller
                 }
 
                 if ($hasKitchenItems) {
+                    $commande = $commande->fresh(['details.produit', 'table', 'user']);
+                    app(\App\Services\OrderService::class)->generateKitchenOrderTickets($commande);
                     event(new NewKitchenOrder($commande));
                 }
 

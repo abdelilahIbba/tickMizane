@@ -14,6 +14,7 @@ use App\Support\SuperAdmin;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Fluent;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * OrderService - خدمة إدارة الطلبيات
@@ -308,6 +309,8 @@ class OrderService
 
             // Fire event for kitchen notification only when kitchen prep is needed
             if ($hasKitchenItems) {
+                $commande = $commande->fresh(['details.produit', 'table', 'user']);
+                $this->generateKitchenOrderTickets($commande);
                 event(new NewKitchenOrder($commande));
             }
 
@@ -349,7 +352,9 @@ class OrderService
 
             // Fire kitchen event so kitchen screen refreshes
             if ($hasKitchenItems) {
-                event(new NewKitchenOrder($commande->fresh()));
+                $freshCommande = $commande->fresh(['details.produit', 'table', 'user']);
+                $this->generateKitchenOrderTickets($freshCommande);
+                event(new NewKitchenOrder($freshCommande));
             }
 
             $this->attachItemsToExistingVente($commande->fresh());
@@ -414,7 +419,9 @@ class OrderService
             $commande->recalculateTotal();
 
             if ($hasKitchenItems) {
-                event(new NewKitchenOrder($commande->fresh()));
+                $freshCommande = $commande->fresh(['details.produit', 'table', 'user']);
+                $this->generateKitchenOrderTickets($freshCommande);
+                event(new NewKitchenOrder($freshCommande));
             }
 
             $this->attachItemsToExistingVente($commande->fresh());
@@ -681,6 +688,72 @@ class OrderService
             'items' => $items,
             'created_at' => $commande->created_at,
             'status' => $commande->status,
+        ];
+    }
+
+    /**
+     * Generate both cashier talon and customer ticket for a kitchen order.
+     * The tickets share the same branding and layout as the payment receipt.
+     */
+    public function generateKitchenOrderTickets(Commande $commande): array
+    {
+        if (!$commande->isKitchenOrder()) {
+            throw new \InvalidArgumentException('Cette commande n\'est pas une commande cuisine.');
+        }
+
+        $commande->loadMissing(['details.produit', 'table', 'user']);
+
+        $totalAmount = (float) $commande->details
+            ->sum(fn ($detail) => ((float) $detail->price) * ((int) $detail->quantity));
+
+        $disk = Storage::disk('local');
+        $ticketDir = 'tickets/kitchen';
+        $disk->makeDirectory($ticketDir);
+
+        $baseContext = [
+            'orders' => collect([$commande]),
+            'commande' => $commande,
+            'totalAmount' => $totalAmount,
+            'netAmount' => $totalAmount,
+            'discountPercent' => 0,
+            'discountAmount' => 0,
+            'paymentMethod' => 'cash',
+            'changeAmount' => 0,
+            'redirectUrl' => route('kitchen.index', [], false),
+            'showActions' => false,
+        ];
+
+        $cashierHtml = view('tickets.kitchen-dual', array_merge($baseContext, [
+            'ticketLabel' => 'TALON CAISSE',
+            'ticketType' => 'cashier',
+            'ticketTitle' => 'Talon caisse',
+            'ticketSubtitle' => 'Commande envoyée à la cuisine',
+        ]))->render();
+
+        $clientHtml = view('tickets.kitchen-dual', array_merge($baseContext, [
+            'ticketLabel' => 'TICKET CLIENT',
+            'ticketType' => 'client',
+            'ticketTitle' => 'Ticket client',
+            'ticketSubtitle' => 'Merci pour votre commande',
+        ]))->render();
+
+        $cashierPath = $ticketDir . '/order-' . $commande->id . '-cashier.html';
+        $clientPath = $ticketDir . '/order-' . $commande->id . '-client.html';
+
+        $disk->put($cashierPath, $cashierHtml);
+        $disk->put($clientPath, $clientHtml);
+
+        return [
+            'cashier' => [
+                'path' => $cashierPath,
+                'html' => $cashierHtml,
+                'ticket_type' => 'cashier',
+            ],
+            'client' => [
+                'path' => $clientPath,
+                'html' => $clientHtml,
+                'ticket_type' => 'client',
+            ],
         ];
     }
 

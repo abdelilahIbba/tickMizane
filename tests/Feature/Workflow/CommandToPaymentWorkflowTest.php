@@ -8,8 +8,10 @@ use App\Models\Commande;
 use App\Models\Produit;
 use App\Models\Table;
 use App\Models\User;
+use App\Services\OrderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CommandToPaymentWorkflowTest extends TestCase
@@ -21,6 +23,53 @@ class CommandToPaymentWorkflowTest extends TestCase
         parent::setUp();
 
         $this->withoutMiddleware(ValidateCsrfToken::class);
+    }
+
+    #[Test]
+    public function sending_order_to_kitchen_generates_cashier_and_customer_tickets()
+    {
+        $waiter = User::factory()->create([
+            'role' => 'serveur',
+            'status' => 'active',
+        ]);
+
+        $table = Table::factory()->create([
+            'status' => 'free',
+        ]);
+
+        $product = Produit::factory()->create([
+            'name' => 'Tagine Royal',
+            'price_vente' => 75.00,
+            'stock_quantity' => 50,
+            'status' => 'active',
+            'kitchen_active' => true,
+        ]);
+
+        $response = $this->actingAs($waiter)
+            ->postJson(route('waiter.order.store', $table), [
+                'items' => [
+                    ['produit_id' => $product->id, 'quantity' => 2, 'notes' => 'Sans oignon'],
+                ],
+                'waiter_notes' => 'Commande prioritaire',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson(['success' => true]);
+
+        $commande = Commande::latest('id')->firstOrFail();
+        $tickets = app(OrderService::class)->generateKitchenOrderTickets($commande);
+
+        $this->assertArrayHasKey('cashier', $tickets);
+        $this->assertArrayHasKey('client', $tickets);
+        $this->assertSame($tickets['cashier']['ticket_type'], $tickets['client']['ticket_type']);
+        $this->assertStringContainsString('Oussoul House', $tickets['cashier']['html']);
+        $this->assertStringContainsString('RESTAURANT & HOTEL', $tickets['client']['html']);
+        $this->assertStringContainsString('Tagine Royal', $tickets['cashier']['html']);
+        $this->assertStringContainsString('Tagine Royal', $tickets['client']['html']);
+        $this->assertFileExists($tickets['cashier']['path']);
+        $this->assertFileExists($tickets['client']['path']);
+        $this->assertTrue(Storage::disk('local')->exists($tickets['cashier']['path']));
+        $this->assertTrue(Storage::disk('local')->exists($tickets['client']['path']));
     }
 
     #[Test]
