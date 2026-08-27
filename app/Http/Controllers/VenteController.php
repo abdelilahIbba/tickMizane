@@ -77,12 +77,16 @@ class VenteController extends Controller
             abort(403, 'Seul un administrateur peut annuler une vente.');
         }
 
+        $validated = request()->validate([
+            'comment' => ['required', 'string', 'min:5', 'max:1000'],
+        ]);
+
         if ($vente->status === 'cancelled') {
             return back()->with('error', 'Cette vente est déjà annulée.');
         }
 
         try {
-            $this->paymentService->cancelVente($vente);
+            $this->paymentService->cancelVente($vente, $validated['comment']);
 
             return redirect()
                 ->route('ventes.index')
@@ -135,15 +139,24 @@ class VenteController extends Controller
             ->paid()
             ->get();
 
+        $cancelledSales = Vente::with(['user', 'details.produit'])
+            ->whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
+            ->where('status', 'cancelled')
+            ->orderByDesc('updated_at')
+            ->get();
+
         $stats = [
             'total_sales' => $ventes->sum('total'),
             'sales_count' => $ventes->count(),
             'average_sale' => $ventes->avg('total') ?? 0,
+            'cancelled_sales' => $cancelledSales->count(),
+            'cancelled_total' => $cancelledSales->sum('total'),
             'by_payment_method' => $ventes->groupBy('payment_method')->map->sum('total'),
             'by_date' => $ventes->groupBy(fn($v) => $v->created_at->format('Y-m-d'))->map->sum('total'),
         ];
 
-        return view('ventes.report', compact('ventes', 'stats', 'dateFrom', 'dateTo'));
+        return view('ventes.report', compact('ventes', 'cancelledSales', 'stats', 'dateFrom', 'dateTo'));
     }
 }
 

@@ -45,6 +45,7 @@ class Vente extends Model
         'total',
         'payment_method',
         'status',
+        'cancel_reason',
     ];
 
     /**
@@ -56,6 +57,7 @@ class Vente extends Model
     {
         return [
             'total' => 'decimal:2',
+            'cancel_reason' => 'string',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

@@ -121,11 +121,16 @@ class PaymentService
     /**
      * Cancel a vente and all its payments.
      */
-    public function cancelVente(Vente $vente): void
+    public function cancelVente(Vente $vente, ?string $comment = null): void
     {
-        DB::transaction(function () use ($vente) {
+        $cancelReason = trim((string) ($comment ?? $vente->cancel_reason ?? ''));
+
+        DB::transaction(function () use ($vente, $cancelReason) {
             // Mark vente as cancelled
-            $vente->update(['status' => 'cancelled']);
+            $vente->update([
+                'status' => 'cancelled',
+                'cancel_reason' => $cancelReason !== '' ? $cancelReason : null,
+            ]);
 
             // Free up the table if assigned
             if ($vente->table) {

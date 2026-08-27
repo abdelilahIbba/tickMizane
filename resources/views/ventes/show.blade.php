@@ -105,6 +105,42 @@
                         </div>
                     </div>
                 </x-ui.card>
+
+                @if($vente->status !== 'cancelled' && auth()->user()?->isAdmin())
+                    <x-ui.card title="Annulation de vente">
+                        <form method="POST" action="{{ route('ventes.cancel', $vente) }}" class="space-y-4">
+                            @csrf
+                            <div>
+                                <label for="cancel-comment" class="block text-sm font-medium text-gray-300 mb-2">
+                                    Motif d'annulation <span class="text-red-400">*</span>
+                                </label>
+                                <textarea
+                                    id="cancel-comment"
+                                    name="comment"
+                                    rows="4"
+                                    required
+                                    minlength="5"
+                                    maxlength="1000"
+                                    class="w-full rounded-xl border border-gray-700 bg-gray-900 text-white placeholder-gray-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+                                    placeholder="Ex: Produit manquant, retour client, erreur de caisse..."
+                                >{{ old('comment') }}</textarea>
+                                @error('comment')
+                                    <p class="mt-2 text-sm text-red-400">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <button type="submit"
+                                    class="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-500 transition-colors"
+                                    onclick="return confirm('Confirmez-vous l\'annulation de cette vente ?')">
+                                Confirmer l'annulation
+                            </button>
+                        </form>
+                    </x-ui.card>
+                @elseif($vente->status === 'cancelled' && $vente->cancel_reason)
+                    <x-ui.card title="Motif d'annulation">
+                        <p class="text-gray-200 whitespace-pre-line">{{ $vente->cancel_reason }}</p>
+                    </x-ui.card>
+                @endif
             </div>
         </div>
     </div>

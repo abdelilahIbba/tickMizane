@@ -78,6 +78,17 @@ class DashboardController extends Controller
         // Pending supplier orders
         $pendingOrders = Commande::pending()->count();
 
+        $cancelledSales = Vente::cancelled()
+            ->whereBetween('created_at', [$todayStart, $todayEnd])
+            ->with('user:id,name')
+            ->latest('updated_at')
+            ->take(5)
+            ->get();
+
+        $cancelledSalesTotal = Vente::cancelled()
+            ->whereBetween('created_at', [$todayStart, $todayEnd])
+            ->sum('total');
+
         // Low stock products list
         $lowStockList = Produit::active()
             ->lowStock()
@@ -101,6 +112,8 @@ class DashboardController extends Controller
             'salesByCategory' => $this->getSalesByCategory(),
             'paymentMethods' => $this->getPaymentMethodsDistribution(),
             'hourlySales' => $this->getHourlySales(),
+            'cancelledSales' => $cancelledSales,
+            'cancelledSalesTotal' => (float) $cancelledSalesTotal,
         ];
 
         return view('dashboard.index', array_merge($dashboardData, [

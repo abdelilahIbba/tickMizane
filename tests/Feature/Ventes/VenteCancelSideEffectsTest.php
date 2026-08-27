@@ -45,11 +45,14 @@ class VenteCancelSideEffectsTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->post(route('ventes.cancel', $vente))
+            ->post(route('ventes.cancel', $vente), [
+                'comment' => 'Retour client avant la sortie caisse.',
+            ])
             ->assertRedirect(route('ventes.index'))
             ->assertSessionHas('success');
 
         $this->assertSame('cancelled', $vente->fresh()->status);
+        $this->assertSame('Retour client avant la sortie caisse.', $vente->fresh()->cancel_reason);
         $this->assertSame(10, (int) $product->fresh()->stock_quantity);
         $this->assertTrue(
             StockMovement::where('produit_id', $product->id)
@@ -76,7 +79,9 @@ class VenteCancelSideEffectsTest extends TestCase
 
         $this->actingAs($admin)
             ->from(route('ventes.index'))
-            ->post(route('ventes.cancel', $vente))
+            ->post(route('ventes.cancel', $vente), [
+                'comment' => 'Vente déjà annulée, sinon impossible.',
+            ])
             ->assertRedirect(route('ventes.index'))
             ->assertSessionHas('error');
     }

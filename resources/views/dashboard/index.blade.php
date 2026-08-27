@@ -19,6 +19,35 @@
 
             <x-ui.stat-card title="Commandes en attente" value="{{ $pendingOrders }}" color="emerald"
                 icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>' />
+
+            <x-ui.stat-card title="Annulations du jour" value="{{ $cancelledSales->count() }}" color="red"
+                icon='<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>' />
+        </div>
+
+        <div class="mb-8 rounded-2xl border border-red-500/30 bg-red-950/20 p-6">
+            <div class="flex items-center justify-between gap-4 mb-4">
+                <div>
+                    <h2 class="text-xl font-semibold text-white">Annulations aujourd'hui</h2>
+                    <p class="text-sm text-red-200">Total: {{ number_format($cancelledSalesTotal, 2) }} DH</p>
+                </div>
+            </div>
+
+            @if($cancelledSales->isEmpty())
+                <p class="text-gray-300">Aucune annulation enregistrée pour cette journée.</p>
+            @else
+                <div class="space-y-3">
+                    @foreach($cancelledSales as $sale)
+                        <div class="rounded-xl border border-red-500/20 bg-gray-900/60 p-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="font-medium text-white">Vente #{{ str_pad($sale->id, 6, '0', STR_PAD_LEFT) }}</p>
+                                <span class="text-sm text-red-300">{{ number_format($sale->total, 2) }} DH</span>
+                            </div>
+                            <p class="mt-1 text-sm text-gray-300">{{ $sale->user->name ?? 'N/A' }} — {{ $sale->updated_at->format('H:i') }}</p>
+                            <p class="mt-2 text-sm text-red-100 whitespace-pre-line">{{ $sale->cancel_reason ?? 'Aucun motif renseigné.' }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </div>
 
         {{-- Charts Row 1: Weekly Sales & Hourly Distribution --}}
