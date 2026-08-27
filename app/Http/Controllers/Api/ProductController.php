@@ -124,8 +124,8 @@ class ProductController extends Controller
      */
     public function destroy(Produit $product)
     {
-        // Check if product has sales
-        if ($product->venteDetails()->exists()) {
+        // Keep delete blocked only for paid sales history.
+        if ($product->hasPaidSales()) {
             // Archive instead of delete
             $product->update(['status' => 'archived']);
 

@@ -6,12 +6,20 @@
                 <h1 class="text-3xl font-bold text-white">Produits</h1>
                 <p class="text-gray-400 mt-1">Gérez votre catalogue de produits</p>
             </div>
-            <x-ui.button variant="primary" href="{{ route('products.create') }}">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
-                Nouveau produit
-            </x-ui.button>
+            <div class="flex flex-wrap items-center gap-3">
+                <x-ui.button variant="secondary" x-data @click="$dispatch('open-modal-product-import')">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 4v12m0 0l-4-4m4 4l4-4"/>
+                    </svg>
+                    Importer produits (.xls)
+                </x-ui.button>
+                <x-ui.button variant="primary" href="{{ route('products.create') }}">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    Nouveau produit
+                </x-ui.button>
+            </div>
         </div>
         
         {{-- Filters --}}
@@ -52,6 +60,11 @@
         @if(session('error'))
             <x-ui.alert type="error" class="mb-6">
                 {{ session('error') }}
+            </x-ui.alert>
+        @endif
+        @if($errors->productImport->any())
+            <x-ui.alert type="error" class="mb-6">
+                {{ $errors->productImport->first('import_file') }}
             </x-ui.alert>
         @endif
         
@@ -189,4 +202,46 @@
             </form>
         </x-ui.modal>
     @endforeach
+
+    <x-ui.modal id="product-import" title="Importer des produits depuis Excel" size="md">
+        <form action="{{ route('products.import') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            @csrf
+
+            <x-ui.alert type="info">
+                Import automatique: le système détecte les catégories et importe les produits avec un stock initial de 100.
+            </x-ui.alert>
+
+            <div>
+                <label for="import_file" class="block text-sm font-medium text-gray-300 mb-2">Fichier Excel (.xls ou .xlsx)</label>
+                <input
+                    type="file"
+                    name="import_file"
+                    id="import_file"
+                    accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    required
+                    class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500 text-sm"
+                >
+                @if($errors->productImport->has('import_file'))
+                    <p class="text-sm text-red-400 mt-2">{{ $errors->productImport->first('import_file') }}</p>
+                @endif
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <x-ui.button variant="secondary" type="button" x-on:click="$dispatch('close-modal-product-import')">
+                    Annuler
+                </x-ui.button>
+                <x-ui.button variant="primary" type="submit">
+                    Lancer l'import
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    @if(session('open_product_import_modal') || $errors->productImport->any())
+        <script>
+            window.addEventListener('DOMContentLoaded', () => {
+                window.dispatchEvent(new CustomEvent('open-modal-product-import'));
+            });
+        </script>
+    @endif
 </x-layout.app>

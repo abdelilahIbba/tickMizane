@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Produit;
 use App\Models\Category;
 use App\Models\StockMovement;
+use App\Services\ProductImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
+use RuntimeException;
 
 class ProductController extends Controller
 {
@@ -169,8 +172,8 @@ class ProductController extends Controller
      */
     public function destroy(Produit $product)
     {
-        // Check if product has sales
-        if ($product->venteDetails()->exists()) {
+        // Block deletion only when product has paid sales history.
+        if ($product->hasPaidSales()) {
             return redirect()
                 ->route('products.index')
                 ->with('error', 'Impossible de supprimer ce produit car il a des ventes associées.');
@@ -218,6 +221,53 @@ class ProductController extends Controller
         $product->update(['stock_quantity' => $stockApres]);
 
         return back()->with('success', 'Stock mis à jour avec succès.');
+    }
+
+    /**
+     * Import products from an Excel file (.xls).
+     */
+    public function import(Request $request, ProductImportService $importService)
+    {
+        $validator = Validator::make($request->all(), [
+            'import_file' => 'required|file|mimes:xls,xlsx|max:10240',
+        ], [
+            'import_file.required' => 'Veuillez sélectionner un fichier Excel.',
+            'import_file.mimes' => 'Le fichier doit être au format Excel (.xls ou .xlsx).',
+            'import_file.max' => 'Le fichier dépasse la taille maximale autorisée (10 MB).',
+        ]);
+
+        if ($validator->fails()) {
+            return back()
+                ->withErrors($validator, 'productImport')
+                ->with('error', 'Import impossible: fichier invalide.')
+                ->with('open_product_import_modal', true);
+        }
+
+        try {
+            $stats = $importService->importFromXls($request->file('import_file')->getRealPath());
+        } catch (RuntimeException $exception) {
+            return back()
+                ->with('error', $exception->getMessage())
+                ->with('open_product_import_modal', true);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return back()
+                ->with('error', 'Une erreur est survenue pendant l\'import. Veuillez réessayer.')
+                ->with('open_product_import_modal', true);
+        }
+
+        $message = sprintf(
+            'Import terminé: %d produit(s) créé(s), %d ignoré(s) car déjà existant(s), %d catégorie(s) créée(s) sur %d ligne(s) traitée(s).',
+            $stats['products_created'],
+            $stats['products_skipped'],
+            $stats['categories_created'],
+            $stats['rows_processed']
+        );
+
+        return redirect()
+            ->route('products.index')
+            ->with('success', $message);
     }
 
     /**

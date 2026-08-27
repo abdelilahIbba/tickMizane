@@ -207,6 +207,18 @@ class Produit extends Model
     }
 
     /**
+     * Check whether product has at least one paid sale.
+     */
+    public function hasPaidSales(): bool
+    {
+        return $this->venteDetails()
+            ->whereHas('vente', function ($query) {
+                $query->where('status', 'paid');
+            })
+            ->exists();
+    }
+
+    /**
      * Decrement stock quantity.
      */
     public function decrementStock(int $quantity): void

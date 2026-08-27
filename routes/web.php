@@ -88,6 +88,7 @@ Route::middleware(['auth'])->group(function () {
         
         // Products management
         Route::resource('products', ProductController::class);
+        Route::post('/products/import', [ProductController::class, 'import'])->name('products.import');
         Route::post('/products/{product}/update-stock', [ProductController::class, 'updateStock'])->name('products.update-stock');
         
         // Fournisseurs (Suppliers)
@@ -102,8 +103,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/orders/{commande}/receive', [OrderController::class, 'receive'])->name('orders.receive');
         Route::post('/orders/{commande}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
         
-        // Legacy Commandes routes (backward compatibility)
-        Route::resource('commandes', CommandeController::class);
+        // Commandes fournisseurs — mutations are Admin / Super Admin only
+        Route::resource('commandes', CommandeController::class)->except(['index', 'show']);
         Route::post('/commandes/{commande}/receive', [CommandeController::class, 'receive'])->name('commandes.receive');
         
         // Historique (Audit Logs)
@@ -231,6 +232,10 @@ Route::middleware(['auth'])->group(function () {
     | Kitchen dashboard for viewing and managing orders
     */
     Route::middleware(['role:admin,caissier,serveur'])->group(function () {
+        // Commandes fournisseurs — view (show) for all staff; update stays admin-only
+        Route::get('/commandes', [CommandeController::class, 'index'])->name('commandes.index');
+        Route::get('/commandes/{commande}', [CommandeController::class, 'show'])->name('commandes.show');
+
         // Kitchen Dashboard (read-only for serveur)
         Route::get('/kitchen', [KitchenController::class, 'index'])->name('kitchen.index');
         Route::get('/kitchen/display', [KitchenController::class, 'display'])->name('kitchen.display');
