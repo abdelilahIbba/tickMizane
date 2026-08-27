@@ -41,7 +41,7 @@ class DashboardController extends Controller
         $kitchenValidationCount = Commande::kitchen()->where('status', 'en_cuisine')->count();
         $kitchenPrepCount = Commande::kitchen()->where('status', 'en_preparation')->count();
         $readyOrdersCount = Commande::kitchen()->where('status', 'pret')->count();
-        $settlementPendingCount = Commande::kitchen()->readyForPayment()->count();
+        $settlementPendingCount = Commande::kitchen()->pendingPayment()->count();
 
         $liveKitchenOrders = Commande::kitchen()
             ->whereIn('status', ['en_cuisine', 'en_preparation'])

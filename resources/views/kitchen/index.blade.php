@@ -3,8 +3,8 @@
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <div>
-            <h1 class="text-3xl font-bold text-white">Cuisine Dashboard</h1>
-            <p class="text-gray-400 mt-1">Gestion des commandes en temps réel</p>
+            <h1 class="text-3xl font-bold text-white">Cuisine</h1>
+            <p class="text-gray-400 mt-1">Suivi optionnel des préparations. Les commandes sont déjà à l'encaissement.</p>
         </div>
         <div class="flex gap-3">
             <button onclick="window.location.reload()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">

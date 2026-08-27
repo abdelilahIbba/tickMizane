@@ -182,6 +182,12 @@ class WaiterOrderLifecycleTest extends TestCase
         $order = Commande::latest('id')->firstOrFail();
         $this->assertSame('en_cuisine', $order->status);
 
+        $cashier = User::factory()->create(['role' => 'caissier', 'status' => 'active']);
+        $this->actingAs($cashier)
+            ->get(route('cashier.pending'))
+            ->assertOk()
+            ->assertSee('Encaisser');
+
         $this->actingAs($waiter)
             ->postJson(route('waiter.order.finalize', $order))
             ->assertOk()

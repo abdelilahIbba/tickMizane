@@ -243,12 +243,10 @@ class WaiterController extends Controller
         $categories = Category::active()->with('produits')->get();
         $products = Produit::active()->get();
 
-        $existingOrder = Commande::where('table_id', $table->id)
-            ->where('type', 'kitchen')
-            ->whereIn('status', ['en_cuisine', 'en_preparation', 'pret', 'servi'])
-            ->with(['details.produit'])
-            ->latest()
-            ->first();
+        $existingOrder = $this->orderService->resolveTableSessionCommande($table);
+        if ($existingOrder) {
+            $existingOrder->load(['details.produit', 'paiements']);
+        }
 
         $availableTables = Table::where('id', '!=', $table->id)
             ->orderBy('id')
@@ -271,12 +269,7 @@ class WaiterController extends Controller
         ]);
 
         try {
-            // If there's an active order being prepared, add items to it
-            $existingOrder = Commande::where('table_id', $table->id)
-                ->where('type', 'kitchen')
-                ->whereIn('status', ['en_cuisine', 'en_preparation'])
-                ->latest()
-                ->first();
+            $existingOrder = $this->orderService->resolveTableSessionCommande($table);
 
             if ($existingOrder) {
                 $commande = $this->orderService->addItemsToKitchenOrder(
@@ -328,7 +321,7 @@ class WaiterController extends Controller
     }
 
     /**
-     * Finalize a kitchen order directly for settlement (bypass kitchen validation).
+     * Optionally mark a kitchen order as served. Settlement does not require this step.
      */
     public function finalizeForSettlement(Request $request, Commande $commande)
     {
@@ -344,8 +337,8 @@ class WaiterController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Commande finalisée et envoyée à l\'encaissement.',
-            'redirect' => route('waiter.index'),
+            'message' => 'Commande marquée comme servie. Elle était déjà à l\'encaissement.',
+            'redirect' => route('cashier.payment', $commande),
         ]);
     }
 

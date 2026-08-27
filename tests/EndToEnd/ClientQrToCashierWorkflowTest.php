@@ -22,7 +22,6 @@ class ClientQrToCashierWorkflowTest extends TestCase
     {
         Event::fake([NewKitchenOrder::class]);
 
-        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $cashier = User::factory()->create(['role' => 'caissier', 'status' => 'active']);
         $product = Produit::factory()->create([
             'price_vente' => 80.00,
@@ -48,14 +47,8 @@ class ClientQrToCashierWorkflowTest extends TestCase
         $this->assertEquals(160.00, (float) $order->total);
         $this->assertStringContainsString('Table n 12', (string) $order->waiter_notes);
 
-        $this->actingAs($admin)
-            ->post(route('kitchen.order.ready', $order))
-            ->assertRedirect(route('kitchen.index'));
-
-        $this->assertSame('pret', $order->fresh()->status);
-
         $pending = $this->actingAs($cashier)->get(route('cashier.pending'));
-        $pending->assertOk()->assertSee('160.00');
+        $pending->assertOk()->assertSee('160.00')->assertSee('Encaisser');
 
         $pay = $this->actingAs($cashier)
             ->postJson(route('cashier.process-payment', $order), [

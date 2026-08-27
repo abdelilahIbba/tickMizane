@@ -102,7 +102,7 @@ class CommandeTest extends TestCase
     }
 
     #[Test]
-    public function scope_pending_payment_returns_ready_unpaid_orders()
+    public function scope_pending_payment_returns_unpaid_kitchen_orders_without_ready_status()
     {
         Commande::factory()->create(['status' => 'pret', 'type' => 'kitchen']);
         Commande::factory()->create(['status' => 'en_cuisine', 'type' => 'kitchen']);
@@ -110,8 +110,8 @@ class CommandeTest extends TestCase
 
         $pending = Commande::pendingPayment()->get();
 
-        $this->assertCount(1, $pending);
-        $this->assertEquals('pret', $pending->first()->status);
+        $this->assertCount(2, $pending);
+        $this->assertTrue($pending->every(fn (Commande $order) => in_array($order->status, Commande::PAYABLE_STATUSES, true)));
     }
 
     #[Test]

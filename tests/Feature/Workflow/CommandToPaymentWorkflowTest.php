@@ -32,13 +32,6 @@ class CommandToPaymentWorkflowTest extends TestCase
             'status' => 'active',
         ]);
 
-        /** @var User $admin */
-        $admin = User::factory()->create([
-            'role' => 'admin',
-            'status' => 'active',
-        ]);
-
-        /** @var User $cashier */
         $cashier = User::factory()->create([
             'role' => 'caissier',
             'status' => 'active',
@@ -66,14 +59,7 @@ class CommandToPaymentWorkflowTest extends TestCase
             ->assertJson(['success' => true]);
 
         $firstOrder = Commande::latest('id')->firstOrFail();
-
-        // Mark the first order as ready so storeOrder creates a new commande
-        // instead of merging into the still-active in-kitchen order.
-        $this->actingAs($admin)
-            ->post(route('kitchen.order.ready', $firstOrder))
-            ->assertRedirect(route('kitchen.index'));
-
-        $this->assertSame('pret', $firstOrder->fresh()->status);
+        $this->assertSame('en_cuisine', $firstOrder->status);
 
         $secondResponse = $this->actingAs($waiter)
             ->postJson(route('waiter.order.store', $table), [
@@ -85,19 +71,11 @@ class CommandToPaymentWorkflowTest extends TestCase
         $secondResponse->assertStatus(200)
             ->assertJson(['success' => true]);
 
-        $secondOrder = Commande::latest('id')->firstOrFail();
-
-        $this->assertNotSame($firstOrder->id, $secondOrder->id);
+        $this->assertSame(1, Commande::kitchen()->where('table_id', $table->id)->count());
+        $this->assertSame($firstOrder->id, Commande::latest('id')->value('id'));
         $this->assertSame($table->id, $firstOrder->fresh()->table_id);
-        $this->assertSame($table->id, $secondOrder->fresh()->table_id);
-
-        // $firstOrder is already pret (marked ready above before placing the second order).
-        $this->actingAs($admin)
-            ->post(route('kitchen.order.ready', $secondOrder))
-            ->assertRedirect(route('kitchen.index'));
-
-        $this->assertSame('pret', $firstOrder->fresh()->status);
-        $this->assertSame('pret', $secondOrder->fresh()->status);
+        $this->assertEquals(150.00, (float) $firstOrder->fresh()->total);
+        $this->assertSame('en_cuisine', $firstOrder->fresh()->status);
 
         $pendingResponse = $this->actingAs($cashier)
             ->get(route('cashier.pending'));
@@ -110,7 +88,7 @@ class CommandToPaymentWorkflowTest extends TestCase
                 return $entry !== null
                     && $pendingOrders->count() === 1
                     && (float) $entry->total === 150.00
-                    && $entry->orders_count === 2;
+                    && $entry->orders_count === 1;
             });
 
         $paymentResponse = $this->actingAs($cashier)
@@ -134,13 +112,13 @@ class CommandToPaymentWorkflowTest extends TestCase
 
         $payResponse->assertJsonPath('commande.id', $firstOrder->id);
         $this->assertSame('payee', $firstOrder->fresh()->status);
-        $this->assertSame('payee', $secondOrder->fresh()->status);
         $this->assertSame('free', $table->fresh()->status);
-        $this->assertDatabaseCount('paiements', 2);
+        $this->assertNull($table->fresh()->current_vente_id);
+        $this->assertDatabaseCount('paiements', 1);
         $this->assertDatabaseHas('paiements', [
             'commande_id' => $firstOrder->id,
             'method' => 'cash',
-            'amount' => 100.00,
+            'amount' => 150.00,
         ]);
 
         $receiptUrl = $payResponse->json('print_url');

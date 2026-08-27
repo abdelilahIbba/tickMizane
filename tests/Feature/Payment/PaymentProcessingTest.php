@@ -110,8 +110,9 @@ class PaymentProcessingTest extends TestCase
         // Verify order is marked as paid
         $this->assertEquals('payee', $this->order->fresh()->status);
 
-        // Verify table is freed
+        // Verify table is freed after encaissement
         $this->assertEquals('free', $this->table->fresh()->status);
+        $this->assertNull($this->table->fresh()->current_vente_id);
 
         // Verify payment record created
         $this->assertDatabaseHas('paiements', [

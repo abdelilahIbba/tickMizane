@@ -3,272 +3,186 @@
 namespace App\Http\Controllers;
 
 use App\Models\Commande;
-use App\Models\CommandeDetail;
-use App\Models\Fournisseur;
 use App\Models\Produit;
-use App\Models\StockMovement;
-use App\Support\SuperAdmin;
+use App\Services\OrderService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class CommandeController extends Controller
 {
+    public function __construct(protected OrderService $orderService)
+    {
+    }
+
     /**
-     * Display a listing of commandes (supplier orders).
+     * List waiter kitchen orders (prise de commande).
      */
     public function index(Request $request)
     {
-        $query = Commande::with(['fournisseur', 'user', 'details']);
+        Gate::authorize('viewAny', Commande::class);
 
-        // Filter by status
+        $query = Commande::fromWaiter()->with(['table', 'user', 'details.produit', 'paiements']);
+
+        if ($request->get('payment') === 'paid') {
+            $query->where('status', 'payee');
+        } elseif ($request->get('payment') === 'unpaid') {
+            $query->where('status', '!=', 'payee')->where('status', '!=', 'annule');
+        }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // Filter by fournisseur
-        if ($request->filled('fournisseur_id')) {
-            $query->where('fournisseur_id', $request->fournisseur_id);
-        }
+        $commandes = $query->latest()->paginate(15)->withQueryString();
 
-        $commandes = $query->latest()->paginate(15);
-        $fournisseurs = Fournisseur::orderBy('name')->get();
-
-        // Stats
         $stats = [
-            'pending' => Commande::where('status', 'pending')->count(),
-            'received' => Commande::where('status', 'received')->count(),
-            'total_value' => Commande::where('status', 'received')->sum('total'),
+            'unpaid' => Commande::fromWaiter()->whereNotIn('status', ['payee', 'annule'])->count(),
+            'paid' => Commande::fromWaiter()->where('status', 'payee')->count(),
+            'unpaid_value' => Commande::fromWaiter()->whereNotIn('status', ['payee', 'annule'])->sum('total'),
         ];
 
-        return view('commandes.index', compact('commandes', 'fournisseurs', 'stats'));
+        return view('commandes.index', compact('commandes', 'stats'));
     }
 
     /**
-     * Show the form for creating a new commande.
+     * New waiter orders are created from the prise de commande screen.
      */
     public function create()
     {
-        $fournisseurs = Fournisseur::orderBy('name')->get();
-        $produits = Produit::orderBy('name')->get();
-        
-        return view('commandes.create', compact('fournisseurs', 'produits'));
+        Gate::authorize('create', Commande::class);
+
+        return redirect()
+            ->route('waiter.index')
+            ->with('success', 'Créez la commande depuis la prise de commande (tables).');
     }
 
     /**
-     * Store a newly created commande.
+     * Store is handled by the waiter table order flow.
      */
-    public function store(Request $request)
+    public function store()
     {
-        $validated = $request->validate([
-            'fournisseur_id' => 'required|exists:fournisseurs,id',
-            'notes' => 'nullable|string|max:500',
-            'produits' => 'required|array|min:1',
-            'produits.*.id' => 'required|exists:produits,id',
-            'produits.*.quantite' => 'required|integer|min:1',
-            'produits.*.prix_achat' => 'required|numeric|min:0',
-        ]);
+        Gate::authorize('create', Commande::class);
 
-        DB::beginTransaction();
-        try {
-            // Generate reference
-            $reference = 'CMD-' . date('Ymd') . '-' . str_pad(Commande::whereDate('created_at', today())->count() + 1, 4, '0', STR_PAD_LEFT);
-
-            // Calculate total
-            $total = collect($validated['produits'])->sum(function ($item) {
-                return $item['quantite'] * $item['prix_achat'];
-            });
-
-            // Create commande
-            $commande = Commande::create([
-                'reference' => $reference,
-                'fournisseur_id' => $validated['fournisseur_id'],
-                'user_id' => SuperAdmin::databaseUserId(),
-                'statut' => 'en_attente',
-                'total' => $total,
-                'notes' => $validated['notes'] ?? null,
-            ]);
-
-            // Create commande details
-            foreach ($validated['produits'] as $item) {
-                CommandeDetail::create([
-                    'commande_id' => $commande->id,
-                    'produit_id' => $item['id'],
-                    'quantite' => $item['quantite'],
-                    'prix_unitaire' => $item['prix_achat'],
-                    'sous_total' => $item['quantite'] * $item['prix_achat'],
-                ]);
-            }
-
-            DB::commit();
-
-            return redirect()
-                ->route('commandes.show', $commande)
-                ->with('success', 'Commande créée avec succès.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()
-                ->withInput()
-                ->with('error', 'Erreur lors de la création de la commande: ' . $e->getMessage());
-        }
+        return redirect()->route('waiter.index');
     }
 
     /**
-     * Display the specified commande.
+     * Display a waiter kitchen order.
      */
     public function show(Commande $commande)
     {
-        $commande->load(['fournisseur', 'user', 'details.produit']);
+        Gate::authorize('view', $commande);
+
+        $commande->load(['table', 'user', 'details.produit', 'paiements']);
+
         return view('commandes.show', compact('commande'));
     }
 
     /**
-     * Show the form for editing the commande.
+     * Edit waiter kitchen order lines (add / remove / quantities).
      */
     public function edit(Commande $commande)
     {
-        if ($commande->statut !== 'en_attente') {
+        $this->ensureCanManageCommandes();
+
+        if (!$commande->isOpenForEdit()) {
             return redirect()
                 ->route('commandes.show', $commande)
-                ->with('error', 'Impossible de modifier une commande déjà reçue ou annulée.');
+                ->with('error', 'Impossible de modifier une commande annulée.');
         }
 
-        $fournisseurs = Fournisseur::orderBy('name')->get();
-        $produits = Produit::orderBy('name')->get();
-        $commande->load('details.produit');
+        $produits = Produit::active()->orderBy('name')->get();
+        $commande->load(['details.produit', 'table', 'user']);
+        $orderLines = $commande->details->map(fn ($detail) => [
+            'product_id' => (string) $detail->produit_id,
+            'quantity' => $detail->quantity,
+            'price' => (float) $detail->price,
+            'notes' => $detail->notes,
+        ])->values();
+        $productCatalog = $produits->mapWithKeys(fn ($produit) => [
+            $produit->id => ['name' => $produit->name, 'price' => (float) $produit->price_vente],
+        ]);
 
-        return view('commandes.edit', compact('commande', 'fournisseurs', 'produits'));
+        return view('commandes.edit', compact('commande', 'produits', 'orderLines', 'productCatalog'));
     }
 
     /**
-     * Update the specified commande.
+     * Update waiter kitchen order lines.
      */
     public function update(Request $request, Commande $commande)
     {
-        if ($commande->statut !== 'en_attente') {
+        $this->ensureCanManageCommandes();
+
+        if (!$commande->isOpenForEdit()) {
             return redirect()
                 ->route('commandes.show', $commande)
-                ->with('error', 'Impossible de modifier une commande déjà reçue ou annulée.');
+                ->with('error', 'Impossible de modifier une commande annulée.');
         }
 
         $validated = $request->validate([
-            'fournisseur_id' => 'required|exists:fournisseurs,id',
-            'notes' => 'nullable|string|max:500',
-            'produits' => 'required|array|min:1',
-            'produits.*.id' => 'required|exists:produits,id',
-            'produits.*.quantite' => 'required|integer|min:1',
-            'produits.*.prix_achat' => 'required|numeric|min:0',
+            'notes' => 'nullable|string|max:1000',
+            'items' => 'required|array|min:1',
+            'items.*.produit_id' => 'required|exists:produits,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.price' => 'nullable|numeric|min:0',
+            'items.*.notes' => 'nullable|string|max:500',
         ]);
 
-        DB::beginTransaction();
         try {
-            // Calculate new total
-            $total = collect($validated['produits'])->sum(function ($item) {
-                return $item['quantite'] * $item['prix_achat'];
-            });
-
-            // Update commande
-            $commande->update([
-                'fournisseur_id' => $validated['fournisseur_id'],
-                'total' => $total,
-                'notes' => $validated['notes'] ?? null,
-            ]);
-
-            // Delete old details and create new ones
-            $commande->details()->delete();
-
-            foreach ($validated['produits'] as $item) {
-                CommandeDetail::create([
-                    'commande_id' => $commande->id,
-                    'produit_id' => $item['id'],
-                    'quantite' => $item['quantite'],
-                    'prix_unitaire' => $item['prix_achat'],
-                    'sous_total' => $item['quantite'] * $item['prix_achat'],
-                ]);
-            }
-
-            DB::commit();
+            $this->orderService->updateKitchenOrderItems(
+                $commande,
+                $validated['items'],
+                $validated['notes'] ?? null
+            );
 
             return redirect()
                 ->route('commandes.show', $commande)
                 ->with('success', 'Commande mise à jour avec succès.');
-
         } catch (\Exception $e) {
-            DB::rollBack();
             return back()
                 ->withInput()
-                ->with('error', 'Erreur lors de la mise à jour: ' . $e->getMessage());
+                ->with('error', 'Erreur lors de la mise à jour: '.$e->getMessage());
         }
     }
 
     /**
-     * Receive the commande and update stock.
+     * Receive is not used for waiter kitchen orders.
      */
     public function receive(Commande $commande)
     {
-        if ($commande->statut !== 'en_attente') {
-            return redirect()
-                ->route('commandes.show', $commande)
-                ->with('error', 'Cette commande a déjà été traitée.');
-        }
+        Gate::authorize('receive', $commande);
 
-        DB::beginTransaction();
-        try {
-            // Update stock for each product
-            foreach ($commande->details as $detail) {
-                $produit = $detail->produit;
-                
-                // Create stock movement
-                StockMovement::create([
-                    'produit_id' => $produit->id,
-                    'type' => 'achat',
-                    'quantite' => $detail->quantite,
-                    'stock_avant' => $produit->stock,
-                    'stock_apres' => $produit->stock + $detail->quantite,
-                    'reference' => $commande->reference,
-                    'notes' => 'Réception commande ' . $commande->reference,
-                    'user_id' => SuperAdmin::databaseUserId(),
-                ]);
-
-                // Update product stock
-                $produit->increment('stock', $detail->quantite);
-            }
-
-            // Update commande status
-            $commande->update([
-                'statut' => 'recue',
-                'date_reception' => now(),
-            ]);
-
-            DB::commit();
-
-            return redirect()
-                ->route('commandes.show', $commande)
-                ->with('success', 'Commande reçue et stock mis à jour avec succès.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Erreur lors de la réception: ' . $e->getMessage());
-        }
+        return redirect()->route('commandes.show', $commande);
     }
 
     /**
-     * Remove the specified commande.
+     * Cancel an unpaid waiter kitchen order.
      */
     public function destroy(Commande $commande)
     {
-        if ($commande->statut === 'recue') {
-            return redirect()
-                ->route('commandes.index')
-                ->with('error', 'Impossible de supprimer une commande déjà reçue.');
-        }
+        Gate::authorize('delete', $commande);
 
-        $commande->details()->delete();
-        $commande->delete();
+        $commande->update(['status' => 'annule']);
+
+        if ($commande->table) {
+            $hasActive = Commande::where('table_id', $commande->table_id)
+                ->where('type', 'kitchen')
+                ->whereIn('status', ['en_cuisine', 'en_preparation', 'pret', 'servi'])
+                ->where('id', '!=', $commande->id)
+                ->exists();
+
+            if (!$hasActive) {
+                $commande->table->release();
+            }
+        }
 
         return redirect()
             ->route('commandes.index')
-            ->with('success', 'Commande supprimée avec succès.');
+            ->with('success', 'Commande annulée avec succès.');
+    }
+
+    private function ensureCanManageCommandes(): void
+    {
+        abort_unless(auth()->user()?->isAdmin(), 403, 'Seul un administrateur peut modifier une commande.');
     }
 }

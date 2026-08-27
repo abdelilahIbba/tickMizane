@@ -75,7 +75,7 @@ class CashierPosController extends Controller
             abort(404, 'Commande non trouvée');
         }
 
-        if ($commande->isPaid()) {
+        if ($commande->isPaid() && $this->orderService->remainingAmountForCommande($commande) <= 0) {
             return redirect()
                 ->route('cashier.pending')
                 ->with('info', 'Cette commande est déjà payée.');
@@ -86,7 +86,7 @@ class CashierPosController extends Controller
         if ($paymentOrders->isEmpty()) {
             return redirect()
                 ->route('cashier.pending')
-                ->with('info', 'Aucune commande prête à encaisser pour cette table.');
+                ->with('info', 'Aucune commande à encaisser pour cette table.');
         }
 
         $paymentOrders = $this->reconcileOrderTotals($paymentOrders);
@@ -121,7 +121,7 @@ class CashierPosController extends Controller
             return back()->with('error', 'Commande invalide.');
         }
 
-        if ($commande->isPaid()) {
+        if ($commande->isPaid() && $this->orderService->remainingAmountForCommande($commande) <= 0) {
             return back()->with('error', 'Cette commande est déjà payée.');
         }
 
@@ -129,7 +129,7 @@ class CashierPosController extends Controller
             $paymentOrders = $this->resolvePaymentOrders($commande);
 
             if ($paymentOrders->isEmpty()) {
-                throw new \InvalidArgumentException('Aucune commande prête à encaisser pour cette table.');
+                throw new \InvalidArgumentException('Aucune commande à encaisser pour cette table.');
             }
 
             $paymentOrders = $this->reconcileOrderTotals($paymentOrders);
@@ -239,28 +239,47 @@ class CashierPosController extends Controller
             ? sprintf('Remise %.1f%% (-%.2f DH)', $discountPct, $discountAmt)
             : null;
 
-        // 1. Insert the sale into the ventes table
-        $vente = Vente::create([
-            'user_id'        => SuperAdmin::databaseUserId() ?? $commande->user_id,
-            'table_id'       => $commande->table_id,
-            'total'          => $paymentAmount,
-            'payment_method' => $paymentMethod === 'mixte' ? 'mixte' : ($paymentMethod === 'carte' ? 'carte' : 'cash'),
-            'status'         => 'paid',
-        ]);
+        $existingVente = $this->orderService->venteForCommande($commande);
+        $method = $paymentMethod === 'mixte' ? 'mixte' : ($paymentMethod === 'carte' ? 'carte' : 'cash');
 
-        // 2. Insert details into the vente_details table
-        $commande->loadMissing('details.produit');
-        foreach ($commande->details as $detail) {
-            VenteDetail::create([
-                'vente_id'   => $vente->id,
-                'produit_id' => $detail->produit_id,
-                'quantity'   => $detail->quantity,
-                'price'      => $detail->price,
-                'total_line' => $detail->quantity * $detail->price,
+        if ($existingVente) {
+            $vente = $existingVente;
+            $this->orderService->syncVenteWithCommande($commande, $vente);
+            $alreadyPaid = (float) $vente->paiements()->sum('amount');
+            $paymentAmount = max(0, round((float) $vente->total - $alreadyPaid, 2));
+            $vente->update([
+                'payment_method' => $method,
+                'status' => 'paid',
             ]);
+        } else {
+            $vente = Vente::create([
+                'user_id'        => SuperAdmin::databaseUserId() ?? $commande->user_id,
+                'table_id'       => $commande->table_id,
+                'total'          => $paymentAmount,
+                'payment_method' => $method,
+                'status'         => 'paid',
+            ]);
+
+            $this->orderService->syncVenteWithCommande($commande, $vente);
         }
 
-        // 3. Insert the payment record with both commande_id and vente_id
+        if ($paymentAmount <= 0) {
+            if ($paymentMethod !== 'mixte') {
+                Paiement::create([
+                    'commande_id' => $commande->id,
+                    'vente_id'    => $vente->id,
+                    'amount'      => 0,
+                    'method'      => $paymentMethod === 'carte' ? 'carte' : 'cash',
+                    'reference'   => 'PAY-' . strtoupper(uniqid()),
+                    'user_id'     => SuperAdmin::databaseUserId(),
+                    'notes'       => $discountNote,
+                ]);
+            }
+
+            $this->orderService->reconcileTableOccupancyAfterSettlement($commande->table);
+
+            return;
+        }
         if ($paymentMethod === 'mixte') {
             // Create two payment records for mixed payments
             if (($paymentData['cash_amount'] ?? 0) > 0) {
@@ -297,6 +316,8 @@ class CashierPosController extends Controller
                 'notes'       => $discountNote,
             ]);
         }
+
+        $this->orderService->reconcileTableOccupancyAfterSettlement($commande->table);
     }
 
     /**

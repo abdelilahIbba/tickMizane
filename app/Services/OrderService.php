@@ -7,6 +7,8 @@ use App\Models\CommandeDetail;
 use App\Models\Fournisseur;
 use App\Models\Produit;
 use App\Models\Table;
+use App\Models\Vente;
+use App\Models\VenteDetail;
 use App\Events\NewKitchenOrder;
 use App\Support\SuperAdmin;
 use Illuminate\Support\Collection;
@@ -350,6 +352,73 @@ class OrderService
                 event(new NewKitchenOrder($commande->fresh()));
             }
 
+            $this->attachItemsToExistingVente($commande->fresh());
+
+            return $commande->fresh(['details.produit', 'table', 'user']);
+        });
+    }
+
+    /**
+     * Replace kitchen-order lines (add, remove, or change quantities) and sync stock.
+     */
+    public function updateKitchenOrderItems(Commande $commande, array $items, ?string $waiterNotes = null): Commande
+    {
+        if (!$commande->isKitchenOrder()) {
+            throw new \InvalidArgumentException('Cette commande n\'est pas une commande cuisine.');
+        }
+
+        if ($commande->status === 'annule') {
+            throw new \InvalidArgumentException('Impossible de modifier une commande annulée.');
+        }
+
+        return DB::transaction(function () use ($commande, $items, $waiterNotes) {
+            $commande->load('details.produit');
+
+            foreach ($commande->details as $detail) {
+                if ($detail->produit && $detail->quantity > 0) {
+                    $this->stockService->addStock(
+                        $detail->produit,
+                        (int) $detail->quantity,
+                        'ajustement',
+                        $commande->id
+                    );
+                }
+            }
+
+            $commande->details()->delete();
+
+            $hasKitchenItems = false;
+
+            foreach ($items as $item) {
+                $produit = Produit::findOrFail($item['produit_id']);
+
+                if ($produit->isKitchenActive()) {
+                    $hasKitchenItems = true;
+                }
+
+                CommandeDetail::create([
+                    'commande_id' => $commande->id,
+                    'produit_id' => $produit->id,
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'] ?? $produit->price_vente,
+                    'notes' => $item['notes'] ?? null,
+                ]);
+
+                $this->stockService->reduceStock($produit, $item['quantity'], 'vente', $commande->id);
+            }
+
+            if ($waiterNotes !== null) {
+                $commande->update(['waiter_notes' => $waiterNotes]);
+            }
+
+            $commande->recalculateTotal();
+
+            if ($hasKitchenItems) {
+                event(new NewKitchenOrder($commande->fresh()));
+            }
+
+            $this->attachItemsToExistingVente($commande->fresh());
+
             return $commande->fresh(['details.produit', 'table', 'user']);
         });
     }
@@ -430,7 +499,7 @@ class OrderService
 
     /**
      * Get orders pending payment for cashier.
-     * Staff orders appear immediately at any active status; client orders only when pret/servi.
+     * Every unpaid kitchen commande appears immediately; kitchen ready is optional.
      */
     public function getPendingPaymentOrders(): Collection
     {
@@ -446,7 +515,7 @@ class OrderService
     }
 
     /**
-     * Get orders available for cashier (staff orders at any active status, client orders pret/servi).
+     * Get orders available for cashier (all unpaid kitchen commandes).
      */
     public function getReadyForPaymentOrders(): Collection
     {
@@ -487,7 +556,7 @@ class OrderService
             throw new \InvalidArgumentException('Cette commande n\'est pas une commande cuisine.');
         }
 
-        if ($commande->isPaid()) {
+        if ($commande->isPaid() && $this->remainingAmountForCommande($commande) <= 0) {
             throw new \InvalidArgumentException('Cette commande est déjà payée.');
         }
 
@@ -501,19 +570,6 @@ class OrderService
 
             // Mark order as paid
             $commande->update(['status' => 'payee']);
-
-            // Free the table if no other pending orders
-            if ($commande->table) {
-                $otherOrders = Commande::where('table_id', $commande->table_id)
-                    ->where('id', '!=', $commande->id)
-                    ->where('type', 'kitchen')
-                    ->whereNotIn('status', ['payee', 'annule'])
-                    ->exists();
-                
-                if (!$otherOrders) {
-                    $commande->table()?->update(['status' => 'free']);
-                }
-            }
 
             // Log the payment
             $commande->logCustomAction('payment', "Paiement de {$total} DH via {$paymentMethod}");
@@ -665,5 +721,126 @@ class OrderService
         }
 
         return $detailsTotal;
+    }
+
+    /**
+     * Open kitchen commande for this table session, including a paid ticket still on the table.
+     */
+    public function resolveTableSessionCommande(Table $table): ?Commande
+    {
+        $open = Commande::query()
+            ->where('table_id', $table->id)
+            ->kitchen()
+            ->whereIn('status', ['en_cuisine', 'en_preparation', 'pret', 'servi'])
+            ->latest('id')
+            ->first();
+
+        if ($open) {
+            return $open;
+        }
+
+        $table->refresh();
+
+        if ($table->current_vente_id) {
+            return Commande::query()
+                ->where('table_id', $table->id)
+                ->kitchen()
+                ->whereHas('paiements', fn ($query) => $query->where('vente_id', $table->current_vente_id))
+                ->latest('id')
+                ->first();
+        }
+
+        return null;
+    }
+
+    public function venteForCommande(Commande $commande): ?Vente
+    {
+        $venteId = $commande->paiements()->whereNotNull('vente_id')->latest('id')->value('vente_id');
+
+        return $venteId ? Vente::find($venteId) : null;
+    }
+
+    public function remainingAmountForCommande(Commande $commande): float
+    {
+        $vente = $this->venteForCommande($commande);
+
+        if ($vente) {
+            $paid = (float) $vente->paiements()->sum('amount');
+
+            return max(0, round((float) $vente->total - $paid, 2));
+        }
+
+        if ($commande->isPaid()) {
+            return 0;
+        }
+
+        return round((float) $commande->total, 2);
+    }
+
+    public function syncVenteWithCommande(Commande $commande, Vente $vente): Vente
+    {
+        $commande->loadMissing('details.produit');
+
+        $vente->details()->delete();
+
+        foreach ($commande->details as $detail) {
+            VenteDetail::create([
+                'vente_id' => $vente->id,
+                'produit_id' => $detail->produit_id,
+                'quantity' => $detail->quantity,
+                'price' => $detail->price,
+                'total_line' => $detail->quantity * $detail->price,
+            ]);
+        }
+
+        $vente->recalculateTotal();
+
+        return $vente->fresh(['details']);
+    }
+
+    /**
+     * Free the table when every kitchen commande on it is settled; otherwise keep it occupied.
+     */
+    public function reconcileTableOccupancyAfterSettlement(?Table $table): void
+    {
+        if (!$table) {
+            return;
+        }
+
+        $table->refresh();
+
+        $hasOpenOrders = Commande::query()
+            ->where('table_id', $table->id)
+            ->kitchen()
+            ->whereIn('status', Commande::PAYABLE_STATUSES)
+            ->exists();
+
+        if ($hasOpenOrders) {
+            if ($table->status !== 'occupied') {
+                $table->update(['status' => 'occupied']);
+            }
+
+            return;
+        }
+
+        $table->release();
+    }
+
+    protected function attachItemsToExistingVente(Commande $commande): void
+    {
+        $vente = $this->venteForCommande($commande);
+
+        if (!$vente) {
+            return;
+        }
+
+        $this->syncVenteWithCommande($commande, $vente);
+
+        if ($this->remainingAmountForCommande($commande) > 0 && $commande->status === 'payee') {
+            $commande->update(['status' => 'en_cuisine']);
+            if ($commande->table) {
+                $commande->table->occupy($vente, $commande->user);
+            }
+        }
     }
 }

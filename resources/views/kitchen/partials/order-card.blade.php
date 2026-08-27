@@ -70,52 +70,62 @@
     <!-- Actions -->
     @php
         $isServeur = auth()->user()?->isServeur() ?? false;
+        $canSettle = auth()->user()?->isAdmin() || auth()->user()?->isCaissier() || auth()->user()?->isServeur();
     @endphp
-    <div class="flex gap-2">
-        @if($order->status === 'en_cuisine')
-            @if($isServeur)
-                <button type="button"
-                        disabled
-                        title="Lecture seule: action réservée à la cuisine"
-                        class="flex-1 px-3 py-2 bg-blue-900/40 text-blue-300/70 text-sm font-semibold rounded-lg border border-blue-700/50 cursor-not-allowed">
-                    ✅ Valider
-                </button>
-            @else
-                <form action="{{ route('kitchen.order.status', $order) }}" method="POST" class="flex-1">
-                    @csrf
-                    <input type="hidden" name="status" value="en_preparation">
-                    <button type="submit"
-                            class="w-full px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+    <div class="space-y-2">
+        <div class="flex gap-2">
+            @if($order->status === 'en_cuisine')
+                @if($isServeur)
+                    <button type="button"
+                            disabled
+                            title="Lecture seule: action réservée à la cuisine"
+                            class="flex-1 px-3 py-2 bg-blue-900/40 text-blue-300/70 text-sm font-semibold rounded-lg border border-blue-700/50 cursor-not-allowed">
                         ✅ Valider
                     </button>
-                </form>
-            @endif
-        @elseif($order->status === 'en_preparation')
-            @if($isServeur)
-                <button type="button"
-                        disabled
-                        title="Lecture seule: action réservée à la cuisine"
-                        class="flex-1 px-3 py-2 bg-emerald-900/40 text-emerald-300/70 text-sm font-semibold rounded-lg border border-emerald-700/50 cursor-not-allowed">
-                    🔔 Commande prête
-                </button>
-            @else
-                <form action="{{ route('kitchen.order.ready', $order) }}" method="POST" class="flex-1">
-                    @csrf
-                    <button type="submit"
-                            class="w-full px-3 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors">
+                @else
+                    <form action="{{ route('kitchen.order.status', $order) }}" method="POST" class="flex-1">
+                        @csrf
+                        <input type="hidden" name="status" value="en_preparation">
+                        <button type="submit"
+                                class="w-full px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                            ✅ Valider
+                        </button>
+                    </form>
+                @endif
+            @elseif($order->status === 'en_preparation')
+                @if($isServeur)
+                    <button type="button"
+                            disabled
+                            title="Lecture seule: action réservée à la cuisine"
+                            class="flex-1 px-3 py-2 bg-emerald-900/40 text-emerald-300/70 text-sm font-semibold rounded-lg border border-emerald-700/50 cursor-not-allowed">
                         🔔 Commande prête
                     </button>
-                </form>
+                @else
+                    <form action="{{ route('kitchen.order.ready', $order) }}" method="POST" class="flex-1">
+                        @csrf
+                        <button type="submit"
+                                class="w-full px-3 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors">
+                            🔔 Commande prête
+                        </button>
+                    </form>
+                @endif
+            @elseif($order->status === 'pret')
+            <div class="flex-1 px-3 py-2 bg-emerald-900/50 text-emerald-400 text-sm font-bold rounded-lg border border-emerald-500/30 text-center uppercase tracking-wider">
+                Prête
+            </div>
             @endif
-        @elseif($order->status === 'pret')
-        <div class="flex-1 px-3 py-2 bg-emerald-900/50 text-emerald-400 text-sm font-bold rounded-lg border border-emerald-500/30 text-center uppercase tracking-wider">
-            PRÊT POUR LA CAISSE
+            <a href="{{ route('kitchen.ticket', $order) }}" 
+               target="_blank"
+               class="px-3 py-2 bg-gray-800 text-gray-300 text-sm font-semibold rounded-lg hover:bg-gray-700 transition-colors">
+                🖨
+            </a>
         </div>
+        @if($canSettle)
+            <a href="{{ route('cashier.payment', $order) }}"
+               class="block w-full px-3 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors text-center">
+                Encaisser
+            </a>
         @endif
-        <a href="{{ route('kitchen.ticket', $order) }}" 
-           target="_blank"
-           class="px-3 py-2 bg-gray-800 text-gray-300 text-sm font-semibold rounded-lg hover:bg-gray-700 transition-colors">
-            🖨
-        </a>
+        <p class="text-[11px] text-gray-500">Validation cuisine optionnelle. Déjà visible à l'encaissement.</p>
     </div>
 </div>

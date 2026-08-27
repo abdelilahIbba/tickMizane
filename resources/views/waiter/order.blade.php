@@ -223,11 +223,16 @@
                         <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                         </svg>
-                        <span class="text-sm font-bold text-white truncate">Commande #{{ $existingOrder->id }}</span>
+                        <span class="text-sm font-bold text-white truncate">
+                            Commande #{{ $existingOrder->id }}
+                            @if($existingOrder->venteNumber())
+                                <span class="text-amber-300 font-medium">· Vente {{ $existingOrder->venteNumber() }}</span>
+                            @endif
+                        </span>
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0">
                         @php
-                            $sc = ['en_cuisine'=>'bg-orange-500/20 text-orange-400 border-orange-500/30','en_preparation'=>'bg-blue-500/20 text-blue-400 border-blue-500/30','pret'=>'bg-emerald-500/20 text-emerald-400 border-emerald-500/30','servi'=>'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'];
+                            $sc = ['en_cuisine'=>'bg-orange-500/20 text-orange-400 border-orange-500/30','en_preparation'=>'bg-blue-500/20 text-blue-400 border-blue-500/30','pret'=>'bg-emerald-500/20 text-emerald-400 border-emerald-500/30','servi'=>'bg-cyan-500/20 text-cyan-400 border-cyan-500/30','payee'=>'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'];
                             $sc = $sc[$existingOrder->status] ?? 'bg-gray-500/20 text-gray-400 border-gray-500/30';
                         @endphp
                         <span class="text-xs font-semibold px-2 py-0.5 rounded-full border {{ $sc }}">
@@ -275,15 +280,14 @@
                         <span class="text-sm font-bold text-white">{{ number_format($existingOrder->total, 2) }} DH</span>
                     </div>
                     <div class="grid grid-cols-3 gap-1.5">
-                        <button type="button"
-                                onclick="openFinalizeModal()"
+                        <a href="{{ route('cashier.payment', $existingOrder) }}"
                                 class="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors text-xs font-semibold"
-                                title="Finaliser pour encaissement">
+                                title="Encaisser cette commande">
                             <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
-                            <span class="truncate">Finaliser</span>
-                        </button>
+                            <span class="truncate">Encaisser</span>
+                        </a>
                         <button type="button"
                                 onclick="openTransferModal()"
                                 class="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-colors text-xs font-semibold"

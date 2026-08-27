@@ -196,17 +196,22 @@ class Commande extends Model
     }
 
     /**
-     * Scope for orders pending payment (en_cuisine, en_preparation, pret, servi).
+     * Kitchen statuses that can be settled immediately.
+     * Kitchen validation (pret) is optional and never blocks encaissement.
+     */
+    public const PAYABLE_STATUSES = ['en_cuisine', 'en_preparation', 'pret', 'servi'];
+
+    /**
+     * Scope for unpaid kitchen orders waiting for encaissement.
      */
     public function scopePendingPayment($query)
     {
         return $query->where('type', 'kitchen')
-            ->whereIn('status', ['pret', 'servi']);
+            ->whereIn('status', self::PAYABLE_STATUSES);
     }
 
     /**
-     * Scope for orders ready for cashier (pret or servi).
-     * Used for the 'Prêtes à payer' counter (food actually prepared).
+     * Scope for orders marked ready in the kitchen (optional tracking only).
      */
     public function scopeReadyForPayment($query)
     {
@@ -214,22 +219,12 @@ class Commande extends Model
     }
 
     /**
-     * Scope for the cashier's pending-payment list.
-     * Staff-placed orders (user_id IS NOT NULL) appear immediately at any active
-     * kitchen status so that customers who pay on the spot are handled without delay.
-     * Self-service / client orders (user_id IS NULL) only surface once pret or servi.
+     * Scope for the cashier pending list: every unpaid kitchen commande
+     * appears as soon as it is created, including client QR orders.
      */
     public function scopeForCashier($query)
     {
-        return $query->where(function ($q) {
-            // Orders placed by a staff member – show at any active status
-            $q->whereNotNull('user_id')
-              ->whereIn('status', ['en_cuisine', 'en_preparation', 'pret', 'servi']);
-        })->orWhere(function ($q) {
-            // Self-service / client orders – only when ready or served
-            $q->whereNull('user_id')
-              ->whereIn('status', ['pret', 'servi']);
-        });
+        return $query->whereIn('status', self::PAYABLE_STATUSES);
     }
 
     /**
@@ -319,6 +314,14 @@ class Commande extends Model
     }
 
     /**
+     * Scope for waiter-placed kitchen orders (prise de commande).
+     */
+    public function scopeFromWaiter($query)
+    {
+        return $query->where('type', 'kitchen')->whereNotNull('table_id');
+    }
+
+    /**
      * Check if this is a kitchen order.
      */
     public function isKitchenOrder(): bool
@@ -343,16 +346,11 @@ class Commande extends Model
     }
 
     /**
-     * Check if order is pending payment.
-     * Staff orders are payable at any active status; client orders only when pret/servi.
+     * Check if order is pending payment (kitchen status does not block settlement).
      */
     public function isPendingPayment(): bool
     {
-        $activeStatuses = ['en_cuisine', 'en_preparation', 'pret', 'servi'];
-        if ($this->user_id !== null) {
-            return in_array($this->status, $activeStatuses);
-        }
-        return in_array($this->status, ['pret', 'servi']);
+        return $this->isKitchenOrder() && in_array($this->status, self::PAYABLE_STATUSES, true);
     }
 
     /**
@@ -361,6 +359,28 @@ class Commande extends Model
     public function isPaid(): bool
     {
         return $this->status === 'payee';
+    }
+
+    /**
+     * Kitchen order that can still be edited (paid extras stay on the same vente).
+     */
+    public function isOpenForEdit(): bool
+    {
+        return $this->isKitchenOrder() && $this->status !== 'annule';
+    }
+
+    public function currentVente(): ?Vente
+    {
+        $venteId = $this->paiements()->whereNotNull('vente_id')->latest('id')->value('vente_id');
+
+        return $venteId ? Vente::find($venteId) : null;
+    }
+
+    public function venteNumber(): ?string
+    {
+        $vente = $this->currentVente();
+
+        return $vente ? '#'.str_pad((string) $vente->id, 6, '0', STR_PAD_LEFT) : null;
     }
 
     /**

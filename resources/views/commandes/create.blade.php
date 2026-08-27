@@ -17,12 +17,24 @@
             
             {{-- Supplier Selection --}}
             <x-ui.card title="Fournisseur">
-                <x-form.select 
-                    name="fournisseur_id" 
-                    label="Sélectionner un fournisseur"
-                    :options="['1' => 'Boissons Maroc SARL', '2' => 'Épicerie Gros', '3' => 'Snacks Distribution', '4' => 'Hygiène Plus']"
-                    required
-                />
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Sélectionner un fournisseur</label>
+                    <select 
+                        name="fournisseur_id"
+                        class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                        required
+                    >
+                        <option value="">Sélectionner...</option>
+                        @foreach($fournisseurs as $fournisseur)
+                            <option value="{{ $fournisseur->id }}" {{ old('fournisseur_id') == $fournisseur->id ? 'selected' : '' }}>
+                                {{ $fournisseur->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('fournisseur_id')
+                        <p class="mt-1 text-sm text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
             </x-ui.card>
             
             {{-- Order Lines --}}
@@ -34,13 +46,14 @@
                                 <label class="block text-sm font-medium text-gray-300 mb-2">Produit</label>
                                 <select 
                                     x-model="line.product_id"
+                                    :name="'items[' + index + '][produit_id]'"
                                     class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white"
+                                    required
                                 >
                                     <option value="">Sélectionner...</option>
-                                    <option value="1">Eau minérale 1.5L</option>
-                                    <option value="2">Coca-Cola 33cl</option>
-                                    <option value="3">Chips Lays 150g</option>
-                                    <option value="4">Café moulu 250g</option>
+                                    @foreach($produits as $produit)
+                                        <option value="{{ $produit->id }}">{{ $produit->name }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="col-span-2">
@@ -48,8 +61,10 @@
                                 <input 
                                     type="number" 
                                     x-model="line.quantity"
+                                    :name="'items[' + index + '][quantity]'"
                                     class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white"
                                     min="1"
+                                    required
                                 >
                             </div>
                             <div class="col-span-3">
@@ -57,8 +72,10 @@
                                 <input 
                                     type="number" 
                                     x-model="line.price"
+                                    :name="'items[' + index + '][price]'"
                                     step="0.01"
                                     class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white"
+                                    required
                                 >
                             </div>
                             <div class="col-span-2 flex items-end">
@@ -66,6 +83,8 @@
                                     type="button"
                                     @click="removeLine(index)"
                                     class="w-full py-3 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors"
+                                    :disabled="lines.length === 1"
+                                    :class="{ 'opacity-50 cursor-not-allowed': lines.length === 1 }"
                                 >
                                     <svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -98,12 +117,14 @@
             
             {{-- Notes --}}
             <x-ui.card title="Notes">
-                <x-form.textarea 
-                    name="notes" 
-                    label=""
-                    placeholder="Notes ou instructions particulières..."
-                    rows="3"
-                />
+                <div>
+                    <textarea 
+                        name="notes"
+                        rows="3"
+                        placeholder="Notes ou instructions particulières..."
+                        class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    >{{ old('notes') }}</textarea>
+                </div>
             </x-ui.card>
             
             {{-- Actions --}}

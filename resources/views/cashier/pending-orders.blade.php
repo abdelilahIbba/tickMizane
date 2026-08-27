@@ -47,7 +47,7 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-sm text-gray-400">Prêtes à payer</p>
+                    <p class="text-sm text-gray-400">Validées en cuisine</p>
                     <p class="text-2xl font-bold text-white">{{ $readyOrders->count() }}</p>
                 </div>
             </div>
@@ -151,15 +151,11 @@
                     <span class="text-sm text-gray-500">{{ $order->order_refs ?? ('Cmd #' . $order->id) }}</span>
                 </div>
                 
-                @if($order->ready_for_payment ?? false)
+                @if($order->ready_for_payment ?? true)
                 <a href="{{ route('cashier.payment', $order->representative_commande_id ?? $order->id) }}" 
                    class="block w-full px-4 py-3 bg-emerald-600 text-white text-center font-semibold rounded-lg hover:bg-emerald-700 transition-colors">
                     Encaisser {{ number_format($order->total, 2) }} DH
                 </a>
-                @else
-                <div class="text-center py-2 text-gray-500 text-sm">
-                    En attente de préparation...
-                </div>
                 @endif
             </div>
         </div>

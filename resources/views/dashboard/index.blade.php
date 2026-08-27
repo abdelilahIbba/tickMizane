@@ -133,7 +133,7 @@
                 <x-ui.button variant="secondary" href="{{ route('products.create') }}">
                     Ajouter un produit
                 </x-ui.button>
-                <x-ui.button variant="secondary" href="{{ route('commandes.create') }}">
+                <x-ui.button variant="secondary" href="{{ route('waiter.index') }}">
                     Nouvelle commande
                 </x-ui.button>
                 <x-ui.button variant="info" href="{{ route('stock.index') }}">

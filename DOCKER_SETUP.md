@@ -1,107 +1,102 @@
-# Docker Setup Guide for Laravel Project
+# Docker Architecture & Operations Guide
 
-## Requirements
-- Docker Desktop
-- Docker Compose
+This guide details the containerized Docker setup for **TechMizane**.
 
-## Quick Start
+## Services Architecture
 
-1. **Build the Docker images:**
-   ```bash
-   docker-compose build
-   ```
+The `docker-compose.yml` file defines 6 orchestration services:
 
-2. **Start the containers:**
-   ```bash
-   docker-compose up -d
-   ```
+| Service | Image | Description | Internal Port | Exposed Port |
+|---|---|---|---|---|
+| `postgres` | `postgres:16-alpine` | PostgreSQL 16 DB | 5432 | 5432 |
+| `redis` | `redis:alpine` | Session, Cache & Queue | 6379 | 6379 |
+| `app` | Custom `Dockerfile` | PHP 8.2-FPM App Server | 9000 | - |
+| `queue` | Custom `Dockerfile` | Laravel Queue Worker | - | - |
+| `nginx` | `nginx:alpine` | Web Reverse Proxy | 80 / 443 | 8000 / 8443 |
+| `adminer` | `adminer:latest` | Database UI | 8080 | 8081 |
 
-3. **Generate the app key:**
-   ```bash
-   docker-compose exec app php artisan key:generate
-   ```
+---
 
-4. **Run migrations:**
-   ```bash
-   docker-compose exec app php artisan migrate
-   ```
+## Quick Start Commands
 
-5. **Access your application:**
-   - App: http://localhost
-   - MySQL: localhost:3306
-   - Redis: localhost:6379
-
-## Common Commands
-
-### View logs
+### 1. Build and Launch Containers
 ```bash
-docker-compose logs -f app
-docker-compose logs -f nginx
-docker-compose logs -f db
+docker compose up -d --build
 ```
 
-### Execute artisan commands
+### 2. Run Database Migrations & Seeds
 ```bash
-docker-compose exec app php artisan [command]
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate --force
+docker compose exec app php artisan db:seed --force
+docker compose exec app php artisan storage:link --force
 ```
 
-### Stop containers
+### 3. Check Container Health
 ```bash
-docker-compose down
+docker compose ps
 ```
 
-### Stop and remove volumes
+---
+
+## Common Docker Operational Commands
+
+### View Service Logs
 ```bash
-docker-compose down -v
+# View app logs
+docker compose logs -f app
+
+# View web server logs
+docker compose logs -f nginx
+
+# View queue worker logs
+docker compose logs -f queue
+
+# View database logs
+docker compose logs -f postgres
 ```
 
-### Build fresh
+### Execute Artisan Commands
 ```bash
-docker-compose build --no-cache
+docker compose exec app php artisan [command]
 ```
 
-### Access container shell
+### Access Application Shell
 ```bash
-docker-compose exec app bash
+docker compose exec app bash
 ```
 
-### Install packages
+### Run Integration Tests
 ```bash
-# PHP packages
-docker-compose exec app composer install
-
-# Node packages
-docker-compose exec app npm install
+docker compose exec app php artisan test
 ```
 
-## Environment Configuration
+### Stop & Restart Services
+```bash
+# Stop containers
+docker compose down
 
-Update your `.env` file with:
+# Stop and wipe volume data (Fresh Reset)
+docker compose down -v
 ```
-DB_HOST=db
-DB_PORT=3306
-DB_DATABASE=laravel
-DB_USERNAME=laravel
+
+---
+
+## Environment Configuration (`.env.docker`)
+
+Ensure your `.env` file uses container service names:
+
+```env
+DB_CONNECTION=pgsql
+DB_HOST=postgres
+DB_PORT=5432
+DB_DATABASE=techmizane
+DB_USERNAME=techmizane
 DB_PASSWORD=secret
 
-CACHE_DRIVER=redis
 REDIS_HOST=redis
-REDIS_PASSWORD=null
 REDIS_PORT=6379
 
-QUEUE_CONNECTION=redis
+QUEUE_CONNECTION=database
+CACHE_STORE=database
 ```
-
-## Services
-
-- **PHP-FPM 8.2**: Application server
-- **Nginx**: Web server
-- **MySQL 8.0**: Database
-- **Redis**: Cache and queue driver
-
-## Ports
-
-- HTTP: 80
-- HTTPS: 443
-- MySQL: 3306
-- Redis: 6379
