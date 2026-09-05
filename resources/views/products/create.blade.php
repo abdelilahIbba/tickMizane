@@ -25,10 +25,27 @@
                 
                 <x-form.input 
                     name="name" 
-                    label="Nom du produit" 
-                    placeholder="Ex: Eau minérale 1.5L"
+                    label="Nom du produit (Français)" 
+                    placeholder="Ex: Café au lait"
                     required
                 />
+
+                {{-- Multilingual names --}}
+                <div class="grid grid-cols-2 gap-4">
+                    <x-form.input
+                        name="name_ar"
+                        label="الاسم بالعربية (facultatif)"
+                        placeholder="مثال: قهوة بالحليب"
+                        :value="old('name_ar')"
+                        dir="rtl"
+                    />
+                    <x-form.input
+                        name="name_en"
+                        label="English Name (optional)"
+                        placeholder="Ex: Café au lait"
+                        :value="old('name_en')"
+                    />
+                </div>
                 
                 <x-form.select 
                     name="category_id" 

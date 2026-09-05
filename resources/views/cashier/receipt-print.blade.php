@@ -6,11 +6,11 @@
     <title>Ticket #{{ $commande->id }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
     <style>
         @page {
             size: 80mm auto;
-            margin: 5mm;
+            margin: 0mm;
         }
 
         *, *::before, *::after {
@@ -19,42 +19,42 @@
 
         body {
             margin: 0;
-            padding: 24px;
+            padding: 16px 8px;
             background: #f0ede8;
             font-family: 'Lato', 'Courier New', Courier, monospace;
-            color: #1a1a1a;
+            color: #000;
         }
 
         /* ===== TICKET CONTAINER ===== */
         .ticket {
-            width: 340px;
+            width: 320px;
             max-width: 100%;
             margin: 0 auto;
             background: #fff;
-            padding: 0 0 18px 0;
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
-            color: #1a1a1a;
+            padding: 0 0 10px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+            color: #000;
             overflow: hidden;
         }
 
         /* ===== HEADER BAND ===== */
         .ticket-header {
             background: #ffffff;
-            padding: 24px 12px 18px;
+            padding: 14px 10px 10px;
             text-align: center;
-            color: #1a1a1a;
-            border-bottom: 1.5px solid #1a1a1a;
+            color: #000;
+            border-bottom: 2px solid #000;
         }
 
         .logo-wrap {
             display: flex;
             justify-content: center;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
         .logo-wrap img {
-            width: 85px;
-            height: 85px;
+            width: 80px;
+            height: 80px;
             object-fit: contain;
             image-rendering: -webkit-optimize-contrast;
             image-rendering: crisp-edges;
@@ -62,30 +62,30 @@
 
         .restaurant-name {
             font-family: 'Playfair Display', serif;
-            font-size: 26px;
-            font-weight: 700;
-            letter-spacing: 1.5px;
-            color: #1a1a1a;
-            margin: 12px 0 4px 0;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #000;
+            margin: 8px 0 3px 0;
             line-height: 1.2;
         }
 
         .restaurant-tagline {
             font-family: 'Lato', sans-serif;
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 800;
             letter-spacing: 1px;
             text-transform: uppercase;
-            color: #1a1a1a;
-            margin: 0 0 8px 0;
+            color: #000;
+            margin: 0 0 6px 0;
         }
 
         .restaurant-phone {
             font-family: 'Lato', sans-serif;
             font-size: 12px;
-            font-weight: 600;
-            color: #1a1a1a;
-            letter-spacing: 1px;
+            font-weight: 700;
+            color: #000;
+            letter-spacing: 0.5px;
             margin: 0;
         }
 
@@ -96,77 +96,96 @@
 
         /* ===== BODY ===== */
         .ticket-body {
-            padding: 12px 12px 0;
+            padding: 8px 8px 0;
+            color: #000;
         }
 
         .ticket-date {
             font-family: 'Lato', sans-serif;
-            font-size: 10px;
-            font-weight: 300;
-            color: #777;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #000;
             text-align: center;
-            margin: 8px 0 4px;
+            margin: 6px 0 3px;
             letter-spacing: 0.5px;
         }
 
         .center { text-align: center; }
-        .sub { font-size: 10.5px; color: #555; margin-top: 3px; font-family: 'Lato', sans-serif; }
+        .sub { font-size: 10.5px; color: #000; font-weight: 600; margin-top: 3px; font-family: 'Lato', sans-serif; }
 
         /* Dividers */
         .sep {
             border: none;
-            border-top: 1px dashed #bbb;
-            margin: 8px 0;
+            border-top: 1px dashed #000;
+            margin: 6px 0;
         }
         .sep-strong {
             border: none;
-            border-top: 1.5px solid #1a1a1a;
-            margin: 10px 0;
+            border-top: 2px solid #000;
+            margin: 8px 0;
         }
         .sep-gold {
             border: none;
-            border-top: 1px solid #c9a84c;
-            margin: 10px 0;
+            border-top: 1.5px solid #000;
+            margin: 8px 0;
         }
 
         /* Rows */
         .row {
             display: grid;
-            grid-template-columns: minmax(74px, 84px) minmax(0, 1fr);
+            grid-template-columns: minmax(68px, 78px) minmax(0, 1fr);
             align-items: start;
-            gap: 10px;
-            margin: 4px 0;
+            gap: 6px;
+            margin: 3px 0;
             font-family: 'Lato', sans-serif;
             font-size: 11px;
+            color: #000;
         }
         .row > span:first-child {
             min-width: 0;
             overflow-wrap: break-word;
+            color: #000;
         }
         .row > span:last-child {
             min-width: 0;
             text-align: right;
             overflow-wrap: anywhere;
             word-break: break-word;
+            color: #000;
+            font-weight: 700;
+            padding-right: 2px;
         }
         .label {
-            color: #777;
+            color: #000;
             font-size: 10px;
-            font-weight: 700;
+            font-weight: 800;
             letter-spacing: 0.4px;
             text-transform: uppercase;
         }
 
         /* Items */
-        .item { margin: 5px 0; font-family: 'Lato', sans-serif; font-size: 11.5px; }
+        .item { margin: 4px 0; font-family: 'Lato', sans-serif; font-size: 11.5px; color: #000; }
         .item .row {
-            grid-template-columns: minmax(0, 1fr) 86px;
+            grid-template-columns: minmax(0, 1fr) 72px;
+            gap: 4px;
+        }
+        .item .row > span:last-child {
+            color: #000;
+            font-weight: 800;
+            padding-right: 2px;
         }
         .item .qty {
-            color: #c9a84c;
-            font-weight: 700;
+            color: #000;
+            font-weight: 800;
         }
-        .item-note { font-size: 10px; color: #888; padding-left: 14px; font-style: italic; }
+        .item-note { font-size: 10px; color: #000; padding-left: 12px; font-style: italic; font-weight: 600; }
+
+        /* Multilingual item name */
+        .item-name-fr  { display: block; font-size: 11.5px; font-weight: 700; color: #000; line-height: 1.3; }
+        .item-name-en  { display: block; font-size: 10px; color: #000; font-style: italic; font-weight: 600; line-height: 1.3; margin-top: 1px; }
+        .item-name-ar  { display: block; font-size: 11.5px; color: #000; font-weight: 700; direction: rtl; text-align: right;
+                         font-family: 'Amiri', 'Scheherazade New', 'Traditional Arabic', serif;
+                         line-height: 1.4; margin-top: 1px; }
 
         /* Total */
         .total-row {
@@ -174,43 +193,50 @@
             grid-template-columns: minmax(0,1fr) auto;
             align-items: center;
             margin: 6px 0 4px;
+            color: #000;
         }
         .total-label {
             font-family: 'Playfair Display', serif;
             font-size: 17px;
-            font-weight: 700;
+            font-weight: 800;
             letter-spacing: 1px;
+            color: #000;
         }
         .total-amount {
             font-family: 'Playfair Display', serif;
-            font-size: 19px;
-            font-weight: 700;
+            font-size: 18px;
+            font-weight: 800;
             text-align: right;
+            color: #000;
+            padding-right: 2px;
         }
 
         /* Footer */
         .ticket-footer {
             text-align: center;
-            padding: 10px 12px 0;
+            padding: 8px 8px 0;
+            color: #000;
         }
         .footer-msg {
             font-family: 'Playfair Display', serif;
             font-size: 12px;
             font-style: italic;
-            color: #555;
-            margin: 4px 0 2px;
+            font-weight: 700;
+            color: #000;
+            margin: 3px 0 2px;
         }
         .footer-sub {
             font-family: 'Lato', sans-serif;
-            font-size: 9px;
-            color: #999;
-            letter-spacing: 1px;
+            font-size: 9.5px;
+            color: #000;
+            font-weight: 700;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
         }
 
         /* Action buttons (screen only) */
         .actions {
-            margin-top: 22px;
+            margin-top: 16px;
             display: flex;
             gap: 12px;
             justify-content: center;
@@ -225,63 +251,92 @@
             font-size: 13px;
             letter-spacing: 0.5px;
         }
-        .button-primary { background: #1a1a1a; color: #e8d9b5; }
-        .button-secondary { background: #e5e7eb; color: #111827; }
+        .button-primary { background: #000; color: #fff; }
+        .button-secondary { background: #e5e7eb; color: #000; }
 
         /* ===== PRINT OVERRIDES — Thermal Printer Optimized ===== */
         @media print {
 
-            /* ── Page & body ── */
-            body {
-                background: #fff !important;
-                padding: 0 !important;
+            @page {
+                size: 80mm auto;
+                margin: 0mm !important;
+            }
+
+            *, *::before, *::after {
                 color: #000 !important;
+                border-color: #000 !important;
+                box-shadow: none !important;
+                text-shadow: none !important;
+            }
+
+            /* ── Page & body: Zero margins, auto height ── */
+            html, body {
+                width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                color: #000 !important;
+                overflow: visible !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
 
-            /* ── Ticket container ── */
+            /* ── Ticket container: 70mm width safe zone for 80mm roll ── */
             .ticket {
-                width: 68mm;
-                box-shadow: none;
-                margin: 0;
-                max-width: none;
-                padding-bottom: 10px;
-                background: #fff !important;
-            }
-
-            /* ── HEADER: clean white background, black text ── */
-            .ticket-header {
-                padding: 16px 10px 12px;
+                width: 70mm !important;
+                max-width: 70mm !important;
+                box-shadow: none !important;
+                margin: 0 auto !important;
+                padding: 0 1.5mm 1mm 1.5mm !important;
                 background: #fff !important;
                 color: #000 !important;
-                border-bottom: 1.5px solid #000 !important;
+                height: auto !important;
+                min-height: 0 !important;
+                page-break-inside: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+
+            /* ── HEADER: Compact, pure black ── */
+            .ticket-header {
+                padding: 4px 2px 6px !important;
+                background: #fff !important;
+                color: #000 !important;
+                border-bottom: 2px solid #000 !important;
+            }
+
+            .logo-wrap {
+                margin-bottom: 6px !important;
             }
 
             .logo-wrap img {
-                width: 80px;
-                height: 80px;
+                width: 75px !important;
+                height: 75px !important;
                 filter: none !important;
                 image-rendering: -webkit-optimize-contrast;
                 image-rendering: crisp-edges;
             }
 
             .restaurant-name {
-                font-size: 22px !important;
-                font-weight: 800 !important;
-                letter-spacing: 1.5px !important;
-                color: #000 !important;
-            }
-
-            .restaurant-tagline {
-                font-size: 11px !important;
+                font-size: 20px !important;
                 font-weight: 800 !important;
                 letter-spacing: 1px !important;
                 color: #000 !important;
+                margin: 6px 0 2px 0 !important;
+            }
+
+            .restaurant-tagline {
+                font-size: 10px !important;
+                font-weight: 800 !important;
+                letter-spacing: 1px !important;
+                color: #000 !important;
+                margin: 0 0 4px 0 !important;
             }
 
             .restaurant-phone {
-                font-size: 12px !important;
+                font-size: 11.5px !important;
                 font-weight: 700 !important;
                 color: #000 !important;
             }
@@ -292,50 +347,120 @@
                 color: #000 !important;
             }
 
+            .ticket-body {
+                padding: 4px 1mm 0 1mm !important;
+            }
+
             /* Date */
             .ticket-date {
+                font-size: 10px !important;
+                font-weight: 700 !important;
                 color: #000 !important;
+                margin: 4px 0 2px !important;
             }
 
             /* Labels (COMMANDES, TABLE, SERVEUR…) */
             .label {
                 color: #000 !important;
+                font-weight: 800 !important;
             }
 
-            /* Item quantity (was gold #c9a84c — doesn't print on thermal) */
+            .row {
+                grid-template-columns: minmax(62px, 72px) minmax(0, 1fr) !important;
+                gap: 4px !important;
+                margin: 2px 0 !important;
+            }
+
+            .row > span:last-child {
+                padding-right: 1.5mm !important;
+                color: #000 !important;
+                font-weight: 700 !important;
+            }
+
+            .item {
+                margin: 3px 0 !important;
+            }
+
+            .item .row {
+                grid-template-columns: minmax(0, 1fr) 68px !important;
+                gap: 4px !important;
+            }
+
+            .item .row > span:last-child {
+                padding-right: 1.5mm !important;
+                color: #000 !important;
+                font-weight: 800 !important;
+            }
+
+            /* Item quantity */
             .item .qty {
                 color: #000 !important;
-                font-weight: 700;
+                font-weight: 800 !important;
+            }
+
+            .item-name-fr,
+            .item-name-en,
+            .item-name-ar {
+                color: #000 !important;
             }
 
             /* Item notes */
             .item-note {
                 color: #000 !important;
+                font-weight: 600 !important;
+                padding-left: 10px !important;
             }
 
-            /* Separators — simple black lines */
+            /* Separators — simple solid/dashed black lines */
             .sep {
                 border-top: 1px dashed #000 !important;
+                margin: 4px 0 !important;
             }
 
             .sep-strong {
-                border-top: 1.5px solid #000 !important;
+                border-top: 2px solid #000 !important;
+                margin: 6px 0 !important;
             }
 
             .sep-gold {
-                border-top: 1px solid #000 !important;
+                border-top: 1.5px solid #000 !important;
+                margin: 5px 0 !important;
             }
 
             /* Total */
-            .total-label,
-            .total-amount {
+            .total-row {
+                margin: 4px 0 2px !important;
+            }
+
+            .total-label {
+                font-size: 16px !important;
+                font-weight: 800 !important;
                 color: #000 !important;
             }
 
+            .total-amount {
+                font-size: 17px !important;
+                font-weight: 800 !important;
+                color: #000 !important;
+                padding-right: 1.5mm !important;
+            }
+
             /* Footer */
-            .ticket-footer,
-            .footer-msg,
+            .ticket-footer {
+                padding: 4px 2px 0 !important;
+                color: #000 !important;
+            }
+
+            .footer-msg {
+                font-size: 11.5px !important;
+                font-weight: 700 !important;
+                color: #000 !important;
+                margin: 2px 0 1px !important;
+            }
+
             .footer-sub {
+                font-size: 9px !important;
+                font-weight: 700 !important;
                 color: #000 !important;
             }
 
@@ -409,9 +534,24 @@
             <hr class="sep">
 
             @foreach($ticketDetails as $detail)
+                @php
+                    $produit = $detail->produit;
+                    $nameFr  = $produit->name    ?? 'Produit';
+                    $nameEn  = $produit->name_en ?? null;
+                    $nameAr  = $produit->name_ar ?? null;
+                @endphp
                 <div class="item">
                     <div class="row">
-                        <span><span class="qty">{{ $detail->quantity }}×</span> {{ $detail->produit->name }}</span>
+                        <span>
+                            <span class="qty">{{ $detail->quantity }}×</span>
+                            <span class="item-name-fr">{{ $nameFr }}</span>
+                            @if($nameEn && $nameEn !== $nameFr)
+                                <span class="item-name-en">{{ $nameEn }}</span>
+                            @endif
+                            @if($nameAr)
+                                <span class="item-name-ar">{{ $nameAr }}</span>
+                            @endif
+                        </span>
                         <span>{{ number_format($detail->price * $detail->quantity, 2) }} DH</span>
                     </div>
                     @if($detail->notes)
@@ -430,9 +570,9 @@
             @if($discountPercent > 0)
             <div class="row" style="margin-top:4px;">
                 <span class="label">Remise</span>
-                <span style="color:#c0392b;">-{{ number_format($discountAmount, 2) }} DH ({{ $discountPercent }}%)</span>
+                <span style="color:#000; font-weight:700;">-{{ number_format($discountAmount, 2) }} DH ({{ $discountPercent }}%)</span>
             </div>
-            <div class="total-row" style="border-top:1px dashed #ccc; margin-top:6px; padding-top:6px;">
+            <div class="total-row" style="border-top:1px dashed #000; margin-top:6px; padding-top:6px;">
                 <span class="total-label">NET À PAYER</span>
                 <span class="total-amount">{{ number_format($netAmount, 2) }} DH</span>
             </div>
@@ -451,7 +591,7 @@
 
         </div>{{-- /.ticket-body --}}
 
-        <hr class="sep" style="margin: 12px 12px 0;">
+        <hr class="sep" style="margin: 6px 8px 0;">
 
         {{-- ===== FOOTER ===== --}}
         <div class="ticket-footer">

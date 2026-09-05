@@ -13,154 +13,497 @@
 <x-layout.app title="Paiement - Table {{ $displayTable->numero ?? 'N/A' }}">
 
 @push('styles')
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Lato:wght@300;400;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
 <style>
-/* ── Print styles ───────────────────────────────────────────────────────────── */
-@media print {
-    /* Make everything invisible but keep layout intact (display:none on a parent
-       blocks children even when the child has display:block !important) */
-    body * { visibility: hidden !important; }
+/* ── Thermal Ticket Styles (Used in Modal Preview & Print) ─────────────────── */
+.ticket {
+    width: 320px;
+    max-width: 100%;
+    margin: 0 auto;
+    background: #fff;
+    padding: 0 0 10px 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    color: #000;
+    overflow: hidden;
+    font-family: 'Lato', 'Courier New', Courier, monospace;
+}
 
-    /* Show only the ticket and all its descendants */
-    #print-ticket,
-    #print-ticket * { visibility: visible !important; }
+.ticket-header {
+    background: #ffffff;
+    padding: 14px 10px 10px;
+    text-align: center;
+    color: #000;
+    border-bottom: 2px solid #000;
+}
 
-    /* Pin the ticket to the top-left corner of the printed page */
-    #print-ticket {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        background: #fff !important;
-    }
+.logo-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.logo-wrap img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+}
+
+.restaurant-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #000;
+    margin: 8px 0 3px 0;
+    line-height: 1.2;
+}
+
+.restaurant-tagline {
+    font-family: 'Lato', sans-serif;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #000;
+    margin: 0 0 6px 0;
+}
+
+.restaurant-phone {
+    font-family: 'Lato', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #000;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.restaurant-phone::before {
+    content: '☎ ';
+    font-size: 11px;
+}
+
+.ticket-body {
+    padding: 8px 8px 0;
+    color: #000;
+}
+
+.ticket-date {
+    font-family: 'Lato', sans-serif;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #000;
+    text-align: center;
+    margin: 6px 0 3px;
+    letter-spacing: 0.5px;
+}
+
+.sep {
+    border: none;
+    border-top: 1px dashed #000;
+    margin: 6px 0;
+}
+.sep-strong {
+    border: none;
+    border-top: 2px solid #000;
+    margin: 8px 0;
+}
+.sep-gold {
+    border: none;
+    border-top: 1.5px solid #000;
+    margin: 8px 0;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: minmax(68px, 78px) minmax(0, 1fr);
+    align-items: start;
+    gap: 6px;
+    margin: 3px 0;
+    font-family: 'Lato', sans-serif;
+    font-size: 11px;
+    color: #000;
+}
+.row > span:first-child {
+    min-width: 0;
+    overflow-wrap: break-word;
+    color: #000;
+}
+.row > span:last-child {
+    min-width: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    color: #000;
+    font-weight: 700;
+    padding-right: 2px;
+}
+.label {
+    color: #000;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+
+.item { margin: 4px 0; font-family: 'Lato', sans-serif; font-size: 11.5px; color: #000; }
+.item .row {
+    grid-template-columns: minmax(0, 1fr) 72px;
+    gap: 4px;
+}
+.item .row > span:last-child {
+    color: #000;
+    font-weight: 800;
+    padding-right: 2px;
+}
+.item .qty {
+    color: #000;
+    font-weight: 800;
+}
+.item-note { font-size: 10px; color: #000; padding-left: 12px; font-style: italic; font-weight: 600; }
+
+.item-name-fr  { display: block; font-size: 11.5px; font-weight: 700; color: #000; line-height: 1.3; }
+.item-name-en  { display: block; font-size: 10px; color: #000; font-style: italic; font-weight: 600; line-height: 1.3; margin-top: 1px; }
+.item-name-ar  { display: block; font-size: 11.5px; color: #000; font-weight: 700; direction: rtl; text-align: right;
+                 font-family: 'Amiri', 'Scheherazade New', 'Traditional Arabic', serif;
+                 line-height: 1.4; margin-top: 1px; }
+
+.total-row {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) auto;
+    align-items: center;
+    margin: 6px 0 4px;
+    color: #000;
+}
+.total-label {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #000;
+}
+.total-amount {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 800;
+    text-align: right;
+    color: #000;
+    padding-right: 2px;
+}
+
+.ticket-footer {
+    text-align: center;
+    padding: 8px 8px 0;
+    color: #000;
+}
+.footer-msg {
+    font-family: 'Playfair Display', serif;
+    font-size: 12px;
+    font-style: italic;
+    font-weight: 700;
+    color: #000;
+    margin: 3px 0 2px;
+}
+.footer-sub {
+    font-family: 'Lato', sans-serif;
+    font-size: 9.5px;
+    color: #000;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
 #print-ticket {
-    /* Hidden on screen but still rendered so @media print can show it */
     position: absolute;
     left: -9999px;
     top: 0;
-    width: 300px;
+    width: 320px;
 }
 
-/* Ticket styles (used both in modal preview and when printing) */
-.ticket-body {
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 13px;
-    color: #111;
-    background: #fff;
-    width: 300px;
-    margin: 0 auto;
-    padding: 16px 12px;
+/* ── Print styles ───────────────────────────────────────────────────────────── */
+@media print {
+    @page {
+        size: 80mm auto;
+        margin: 0mm !important;
+    }
+
+    *, *::before, *::after {
+        color: #000 !important;
+        border-color: #000 !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+
+    body * { visibility: hidden !important; }
+
+    #print-ticket,
+    #print-ticket * { visibility: visible !important; color: #000 !important; }
+
+    #print-ticket {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 70mm !important;
+        max-width: 70mm !important;
+        margin: 0 auto !important;
+        padding: 0 1.5mm 1mm 1.5mm !important;
+        background: #fff !important;
+    }
+
+    #print-ticket .ticket {
+        width: 70mm !important;
+        max-width: 70mm !important;
+        margin: 0 auto !important;
+        padding: 0 1.5mm 1mm 1.5mm !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: #fff !important;
+        color: #000 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        page-break-inside: avoid !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+    }
+
+    #print-ticket .ticket-header {
+        padding: 4px 2px 6px !important;
+        background: #fff !important;
+        color: #000 !important;
+        border-bottom: 2px solid #000 !important;
+    }
+
+    #print-ticket .logo-wrap {
+        margin-bottom: 6px !important;
+    }
+
+    #print-ticket .logo-wrap img {
+        width: 75px !important;
+        height: 75px !important;
+    }
+
+    #print-ticket .restaurant-name {
+        font-size: 20px !important;
+        font-weight: 800 !important;
+        margin: 6px 0 2px 0 !important;
+    }
+
+    #print-ticket .restaurant-tagline {
+        font-size: 10px !important;
+        font-weight: 800 !important;
+        margin: 0 0 4px 0 !important;
+    }
+
+    #print-ticket .restaurant-phone {
+        font-size: 11.5px !important;
+        font-weight: 700 !important;
+    }
+
+    #print-ticket .ticket-body {
+        padding: 4px 1mm 0 1mm !important;
+    }
+
+    #print-ticket .ticket-date {
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        margin: 4px 0 2px !important;
+    }
+
+    #print-ticket .row {
+        grid-template-columns: minmax(62px, 72px) minmax(0, 1fr) !important;
+        gap: 4px !important;
+        margin: 2px 0 !important;
+    }
+
+    #print-ticket .row > span:last-child {
+        padding-right: 1.5mm !important;
+        font-weight: 700 !important;
+    }
+
+    #print-ticket .item .row {
+        grid-template-columns: minmax(0, 1fr) 68px !important;
+        gap: 4px !important;
+    }
+
+    #print-ticket .item .row > span:last-child {
+        padding-right: 1.5mm !important;
+        font-weight: 800 !important;
+    }
+
+    #print-ticket .sep {
+        border-top: 1px dashed #000 !important;
+        margin: 4px 0 !important;
+    }
+
+    #print-ticket .sep-strong {
+        border-top: 2px solid #000 !important;
+        margin: 6px 0 !important;
+    }
+
+    #print-ticket .sep-gold {
+        border-top: 1.5px solid #000 !important;
+        margin: 5px 0 !important;
+    }
+
+    #print-ticket .total-row {
+        margin: 4px 0 2px !important;
+    }
+
+    #print-ticket .total-label {
+        font-size: 16px !important;
+        font-weight: 800 !important;
+    }
+
+    #print-ticket .total-amount {
+        font-size: 17px !important;
+        font-weight: 800 !important;
+        padding-right: 1.5mm !important;
+    }
+
+    #print-ticket .ticket-footer {
+        padding: 4px 2px 0 !important;
+    }
+
+    #print-ticket .footer-msg {
+        font-size: 11.5px !important;
+        font-weight: 700 !important;
+        margin: 2px 0 1px !important;
+    }
+
+    #print-ticket .footer-sub {
+        font-size: 9px !important;
+        font-weight: 700 !important;
+    }
 }
-.ticket-body .ticket-title  { text-align: center; font-size: 17px; font-weight: bold; }
-.ticket-body .ticket-sub    { text-align: center; font-size: 11px; color: #444; margin-bottom: 2px; }
-.ticket-body .ticket-sep    { border: none; border-top: 1px dashed #555; margin: 8px 0; }
-.ticket-body .ticket-sep-solid { border: none; border-top: 2px solid #111; margin: 8px 0; }
-.ticket-body .ticket-row    { display: flex; justify-content: space-between; margin: 3px 0; }
-.ticket-body .ticket-label  { color: #555; font-size: 11px; }
-.ticket-body .ticket-total  { font-size: 16px; font-weight: bold; }
-.ticket-body .ticket-footer { text-align: center; font-size: 11px; color: #444; margin-top: 4px; }
 </style>
 @endpush
 
 @php
-    $bizName       = \App\Models\Setting::getValue('business_name',    'Restaurant Dar El Amal');
-    $bizAddress    = \App\Models\Setting::getValue('business_address', '');
-    $bizPhone      = \App\Models\Setting::getValue('business_phone',   '');
-    $receiptFooter = \App\Models\Setting::getValue('receipt_footer',   'Merci de votre visite !');
+    $bizName       = 'Oussoul House';
+    $bizTagline    = 'RESTAURANT & HOTEL';
+    $bizPhone      = '06-60-43-27-86';
+    $receiptFooter = 'Merci de votre visite !';
+
+    $logoPath = public_path('logo-hq.png');
+    $logoSrc = file_exists($logoPath)
+        ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+        : asset('logo.svg');
 @endphp
 
 {{-- ── Hidden print ticket ────────────────────────────────────────────────── --}}
 <div id="print-ticket">
-    <div class="ticket-body">
-        {{-- Header --}}
-        <p class="ticket-title">{{ $bizName }}</p>
-        @if($bizAddress)
-        <p class="ticket-sub">{{ $bizAddress }}</p>
-        @endif
-        @if($bizPhone)
-        <p class="ticket-sub">Tél : {{ $bizPhone }}</p>
-        @endif
-
-        <hr class="ticket-sep-solid">
-
-        {{-- Meta --}}
-        <div class="ticket-row">
-            <span class="ticket-label">Date</span>
-            <span>{{ now()->format('d/m/Y H:i') }}</span>
-        </div>
-        <div class="ticket-row">
-            <span class="ticket-label">Commandes</span>
-            <span>{{ $combinedOrderRefs }}</span>
-        </div>
-        <div class="ticket-row">
-            <span class="ticket-label">Table</span>
-            <span>{{ $displayTable->name ?? 'N/A' }}</span>
-        </div>
-        <div class="ticket-row">
-            <span class="ticket-label">Serveur</span>
-            <span>{{ $displayUser->name ?? 'N/A' }}</span>
-        </div>
-
-        <hr class="ticket-sep">
-
-        {{-- Items --}}
-        @foreach($ticketDetails as $detail)
-        <div style="margin: 4px 0;">
-            <div style="display:flex; justify-content:space-between;">
-                <span>{{ $detail->quantity }}x {{ $detail->produit->name }}</span>
-                <span>{{ number_format($detail->price * $detail->quantity, 2) }} DH</span>
+    <div class="ticket">
+        {{-- ===== HEADER ===== --}}
+        <div class="ticket-header">
+            <div class="logo-wrap">
+                <img src="{{ $logoSrc }}" alt="Oussoul House Logo">
             </div>
-            @if($detail->notes)
-            <div style="font-size:11px; color:#666; padding-left:12px; font-style:italic;">
-                ↳ {{ $detail->notes }}
+            <div class="restaurant-name">{{ $bizName }}</div>
+            <div class="restaurant-tagline">{{ $bizTagline }}</div>
+            <div class="restaurant-phone">{{ $bizPhone }}</div>
+        </div>
+
+        {{-- ===== BODY ===== --}}
+        <div class="ticket-body">
+            <div class="ticket-date">{{ now()->format('d/m/Y  ·  H:i') }}</div>
+
+            <hr class="sep-gold">
+
+            <div class="row">
+                <span class="label">Commandes</span>
+                <span>{{ $combinedOrderRefs }}</span>
             </div>
-            @endif
+            <div class="row">
+                <span class="label">Table</span>
+                <span>{{ $displayTable->name ?? 'N/A' }}</span>
+            </div>
+            <div class="row">
+                <span class="label">Serveur</span>
+                <span>{{ $displayUser->name ?? 'N/A' }}</span>
+            </div>
+
+            <hr class="sep">
+
+            @foreach($ticketDetails as $detail)
+                @php
+                    $produit = $detail->produit;
+                    $nameFr  = $produit->name    ?? 'Produit';
+                    $nameEn  = $produit->name_en ?? null;
+                    $nameAr  = $produit->name_ar ?? null;
+                @endphp
+                <div class="item">
+                    <div class="row">
+                        <span>
+                            <span class="qty">{{ $detail->quantity }}×</span>
+                            <span class="item-name-fr">{{ $nameFr }}</span>
+                            @if($nameEn && $nameEn !== $nameFr)
+                                <span class="item-name-en">{{ $nameEn }}</span>
+                            @endif
+                            @if($nameAr)
+                                <span class="item-name-ar">{{ $nameAr }}</span>
+                            @endif
+                        </span>
+                        <span>{{ number_format($detail->price * $detail->quantity, 2) }} DH</span>
+                    </div>
+                    @if($detail->notes)
+                        <div class="item-note">{{ $detail->notes }}</div>
+                    @endif
+                </div>
+            @endforeach
+
+            <hr class="sep-strong">
+
+            <div class="total-row">
+                <span class="total-label">TOTAL</span>
+                <span class="total-amount" id="ticket-total-amount">{{ number_format($combinedTotal, 2) }} DH</span>
+            </div>
+
+            <div id="ticket-discount-row" class="row" style="display:none; margin-top:4px;">
+                <span class="label">Remise</span>
+                <span id="ticket-discount-amount" style="color:#000; font-weight:700;"></span>
+            </div>
+            <div id="ticket-net-row" class="total-row" style="display:none; border-top:1px dashed #000; margin-top:6px; padding-top:6px;">
+                <span class="total-label">NET À PAYER</span>
+                <span class="total-amount" id="ticket-net-amount"></span>
+            </div>
+
+            <div class="row" style="margin-top:6px;">
+                <span class="label">Règlement</span>
+                <span id="ticket-payment-method">Espèces</span>
+            </div>
+            <div class="row" id="ticket-change-row" style="display:none;">
+                <span class="label">Monnaie rendue</span>
+                <span id="ticket-change-amount"></span>
+            </div>
+
+        </div>{{-- /.ticket-body --}}
+
+        <hr class="sep" style="margin: 6px 8px 0;">
+
+        {{-- ===== FOOTER ===== --}}
+        <div class="ticket-footer">
+            <div class="footer-msg">{{ $receiptFooter }}</div>
+            <div class="footer-sub">{{ $bizName }} — {{ $bizPhone }}</div>
         </div>
-        @endforeach
-
-        <hr class="ticket-sep-solid">
-
-        {{-- Total --}}
-        <div class="ticket-row ticket-total">
-            <span>TOTAL</span>
-            <span>{{ number_format($combinedTotal, 2) }} DH</span>
-        </div>
-
-        {{-- Payment method (filled by JS before print) --}}
-        <div class="ticket-row" style="margin-top:4px;">
-            <span class="ticket-label">Règlement</span>
-            <span id="ticket-payment-method">—</span>
-        </div>
-
-        {{-- Change (filled by JS, hidden if zero) --}}
-        <div class="ticket-row" id="ticket-change-row" style="display:none;">
-            <span class="ticket-label">Monnaie rendue</span>
-            <span id="ticket-change-amount"></span>
-        </div>
-
-        <hr class="ticket-sep">
-
-        {{-- Footer --}}
-        <p class="ticket-footer">{{ $receiptFooter }}</p>
-        <p class="ticket-footer" style="margin-top:8px; font-size:10px;">
-            — Techmizane Cash —
-        </p>
     </div>
 </div>
 
 {{-- ── Print-preview modal ─────────────────────────────────────────────────── --}}
-<div id="ticket-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm no-print">
-    <div class="bg-white rounded-xl shadow-2xl overflow-hidden" style="min-width:340px;">
+<div id="ticket-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm no-print p-4">
+    <div class="bg-white rounded-xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" style="min-width:340px;">
         {{-- Modal header --}}
-        <div class="flex items-center justify-between px-5 py-3 bg-gray-100 border-b border-gray-200">
+        <div class="flex items-center justify-between px-5 py-3 bg-gray-100 border-b border-gray-200 shrink-0">
             <span class="font-semibold text-gray-700">Aperçu du ticket</span>
             <button onclick="closeTicketModal()" class="text-gray-400 hover:text-gray-700 text-xl leading-none">&times;</button>
         </div>
         {{-- Ticket preview (mirrors #print-ticket) --}}
-        <div id="ticket-preview-body" class="p-4"></div>
+        <div id="ticket-preview-body" class="p-4 overflow-y-auto flex-1"></div>
         {{-- Modal footer --}}
-        <div class="flex gap-3 px-5 py-3 bg-gray-100 border-t border-gray-200">
+        <div class="flex gap-3 px-5 py-3 bg-gray-100 border-t border-gray-200 shrink-0">
             <button onclick="doPrint()"
                     class="flex-1 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -588,13 +931,37 @@ function buildTicketData() {
 
 function populateTicket() {
     const { methodLabel, changeVal } = buildTicketData();
-    document.getElementById('ticket-payment-method').textContent = methodLabel;
+    const methodEl = document.getElementById('ticket-payment-method');
+    if (methodEl) methodEl.textContent = methodLabel;
+
     const changeRow = document.getElementById('ticket-change-row');
-    if (changeVal > 0) {
-        document.getElementById('ticket-change-amount').textContent = changeVal.toFixed(2) + ' DH';
-        changeRow.style.display = 'flex';
+    if (changeRow) {
+        if (changeVal > 0) {
+            document.getElementById('ticket-change-amount').textContent = changeVal.toFixed(2) + ' DH';
+            changeRow.style.display = 'grid';
+        } else {
+            changeRow.style.display = 'none';
+        }
+    }
+
+    const pct = Math.min(100, Math.max(0, parseFloat(document.getElementById('discountPercent')?.value) || 0));
+    const discountRow = document.getElementById('ticket-discount-row');
+    const netRow = document.getElementById('ticket-net-row');
+
+    if (pct > 0) {
+        const discountAmt = parseFloat((orderTotal * pct / 100).toFixed(2));
+        const netAmt = parseFloat((orderTotal - discountAmt).toFixed(2));
+        if (discountRow) {
+            document.getElementById('ticket-discount-amount').textContent = '-' + discountAmt.toFixed(2) + ' DH (' + pct + '%)';
+            discountRow.style.display = 'grid';
+        }
+        if (netRow) {
+            document.getElementById('ticket-net-amount').textContent = netAmt.toFixed(2) + ' DH';
+            netRow.style.display = 'grid';
+        }
     } else {
-        changeRow.style.display = 'none';
+        if (discountRow) discountRow.style.display = 'none';
+        if (netRow) netRow.style.display = 'none';
     }
 }
 
@@ -602,7 +969,8 @@ function openTicketModal() {
     populateTicket();
     const preview = document.getElementById('ticket-preview-body');
     preview.innerHTML = '';
-    preview.appendChild(document.querySelector('#print-ticket .ticket-body').cloneNode(true));
+    const ticketClone = document.querySelector('#print-ticket .ticket').cloneNode(true);
+    preview.appendChild(ticketClone);
     const modal = document.getElementById('ticket-modal');
     modal.classList.remove('hidden');
     modal.classList.add('flex');

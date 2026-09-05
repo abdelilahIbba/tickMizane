@@ -61,13 +61,12 @@ class CommandToPaymentWorkflowTest extends TestCase
 
         $this->assertArrayHasKey('cashier', $tickets);
         $this->assertArrayHasKey('client', $tickets);
-        $this->assertSame($tickets['cashier']['ticket_type'], $tickets['client']['ticket_type']);
+        $this->assertSame('cashier', $tickets['cashier']['ticket_type']);
+        $this->assertSame('client',  $tickets['client']['ticket_type']);
         $this->assertStringContainsString('Oussoul House', $tickets['cashier']['html']);
         $this->assertStringContainsString('RESTAURANT & HOTEL', $tickets['client']['html']);
         $this->assertStringContainsString('Tagine Royal', $tickets['cashier']['html']);
         $this->assertStringContainsString('Tagine Royal', $tickets['client']['html']);
-        $this->assertFileExists($tickets['cashier']['path']);
-        $this->assertFileExists($tickets['client']['path']);
         $this->assertTrue(Storage::disk('local')->exists($tickets['cashier']['path']));
         $this->assertTrue(Storage::disk('local')->exists($tickets['client']['path']));
     }

@@ -5,25 +5,79 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ticket {{ $ticketType === 'summary' ? 'resume' : 'detaille' }}</title>
     <style>
-        @page { margin: 8mm; }
-        body { font-family: Arial, sans-serif; color: #111; margin: 0; padding: 16px; }
-        .ticket { max-width: 360px; margin: 0 auto; border: 1px dashed #666; padding: 14px; }
+        @page {
+            size: 80mm auto;
+            margin: 0mm;
+        }
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            color: #000;
+            margin: 0;
+            padding: 12px 8px;
+            background: #f0ede8;
+        }
+        .ticket {
+            width: 320px;
+            max-width: 100%;
+            margin: 0 auto;
+            border: 2px dashed #000;
+            padding: 12px 10px;
+            background: #fff;
+            color: #000;
+        }
         .center { text-align: center; }
-        .title { font-size: 18px; font-weight: bold; margin-bottom: 6px; }
-        .sub { font-size: 12px; color: #444; margin-bottom: 10px; }
-        .row { display: flex; justify-content: space-between; margin: 4px 0; font-size: 13px; }
-        .sep { border-top: 1px dashed #999; margin: 10px 0; }
-        .total { font-weight: bold; font-size: 16px; }
-        .small { font-size: 11px; color: #555; }
+        .title { font-size: 18px; font-weight: 800; margin-bottom: 4px; color: #000; }
+        .sub { font-size: 12px; color: #000; font-weight: 600; margin-bottom: 6px; }
+        .row { display: flex; justify-content: space-between; margin: 3px 0; font-size: 12px; color: #000; }
+        .row > span:last-child { font-weight: 700; padding-right: 2px; }
+        .sep { border: none; border-top: 1.5px dashed #000; margin: 6px 0; }
+        .total { font-weight: 800; font-size: 15px; color: #000; }
+        .small { font-size: 11px; color: #000; font-weight: 600; }
         .actions { margin-top: 14px; text-align: center; }
-        .btn { border: 0; padding: 8px 12px; margin: 0 6px; border-radius: 6px; cursor: pointer; }
-        .btn-print { background: #111; color: #fff; }
-        .btn-back { background: #ddd; color: #111; text-decoration: none; display: inline-block; }
+        .btn { border: 0; padding: 8px 14px; margin: 0 6px; border-radius: 6px; cursor: pointer; font-weight: 700; }
+        .btn-print { background: #000; color: #fff; }
+        .btn-back { background: #ddd; color: #000; text-decoration: none; display: inline-block; }
 
         @media print {
-            .actions { display: none; }
-            body { padding: 0; }
-            .ticket { border: 0; }
+            @page {
+                size: 80mm auto;
+                margin: 0mm !important;
+            }
+            *, *::before, *::after {
+                color: #000 !important;
+                border-color: #000 !important;
+                box-shadow: none !important;
+                text-shadow: none !important;
+            }
+            html, body {
+                width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                color: #000 !important;
+                overflow: visible !important;
+            }
+            .ticket {
+                width: 70mm !important;
+                max-width: 70mm !important;
+                margin: 0 auto !important;
+                padding: 2mm 3mm !important;
+                border: none !important;
+                height: auto !important;
+                min-height: 0 !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+            .row > span:last-child {
+                padding-right: 1.5mm !important;
+                font-weight: 800 !important;
+            }
+            .actions { display: none !important; }
         }
     </style>
 </head>

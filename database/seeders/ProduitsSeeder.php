@@ -697,6 +697,7 @@ class ProduitsSeeder extends Seeder
                 ['name' => $p['name'], 'category_id' => $cat->id],
                 [
                     'name_ar'        => $p['name_ar']        ?? null,
+                    'name_en'        => $p['name_en']        ?? null,
                     'image'          => $p['image'],
                     'price_vente'    => $p['price_vente'],
                     'price_achat'    => $p['price_achat'],
